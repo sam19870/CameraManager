@@ -107,7 +107,16 @@ class PreviewActivity : AppCompatActivity() {
 
         binding.btnBack.setOnClickListener { finish() }
         binding.btnMore.setOnClickListener {
-            device?.let { startActivity(SettingsActivity.intent(this, it.id)) }
+            runCatching {
+                device?.let {
+                    val i = SettingsActivity.intent(this, it.id)
+                    val component = i.resolveActivity(packageManager)
+                    if (component != null) startActivity(i)
+                }
+            }.onFailure { t ->
+                val msg = "打开设置失败: ${t.message ?: ""}".take(42)
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
         }
         binding.btnReconnect.setOnClickListener {
             binding.reconnectOverlay.visibility = View.GONE

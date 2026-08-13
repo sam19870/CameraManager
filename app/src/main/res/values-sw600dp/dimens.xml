@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 平板/大尺寸屏幕：间距+8dp，字号+2sp，圆角+4dp，整体视觉饱满不稀疏 -->
+<resources>
+    <dimen name="spacing_xs">6dp</dimen>
+    <dimen name="spacing_sm">12dp</dimen>
+    <dimen name="spacing_md">18dp</dimen>
+    <dimen name="spacing_lg">24dp</dimen>
+    <dimen name="spacing_xl">30dp</dimen>
+    <dimen name="spacing_xxl">36dp</dimen>
+
+    <dimen name="card_radius_sm">10dp</dimen>
+    <dimen name="card_radius_md">16dp</dimen>
+    <dimen name="card_radius_lg">20dp</dimen>
+    <dimen name="corner_tag">8dp</dimen>
+
+    <dimen name="text_xxs">11sp</dimen>
+    <dimen name="text_xs">12sp</dimen>
+    <dimen name="text_sm">14sp</dimen>
+    <dimen name="text_md">16sp</dimen>
+    <dimen name="text_lg">18sp</dimen>
+    <dimen name="text_xl">20sp</dimen>
+    <dimen name="text_title">22sp</dimen>
+
+    <dimen name="icon_sm">18dp</dimen>
+    <dimen name="icon_md">22dp</dimen>
+    <dimen name="icon_lg">28dp</dimen>
+    <dimen name="icon_card">44dp</dimen>
+    <dimen name="icon_circle_bg">48dp</dimen>
+
+    <dimen name="row_height">64dp</dimen>
+    <dimen name="row_height_lg">80dp</dimen>
+    <dimen name="input_height">54dp</dimen>
+    <dimen name="btn_height">54dp</dimen>
+
+    <dimen name="device_cover_height">140dp</dimen>
+</resources>

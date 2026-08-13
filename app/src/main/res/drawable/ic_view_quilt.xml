@@ -1,10 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 分屏预览：田字4宫格圆角分块，直观易懂 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
     android:tint="@color/white">
     <path
         android:fillColor="@android:color/white"
-        android:pathData="M10.83,9L15,13.17V9zM19,3h-1V1h-2v2H8V1H6v2H5c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V5c0,-1.1 -0.9,-2 -2,-2zM19,19H5V8h14v11zM3,5h2v14H3z"/>
+        android:pathData="M5,4h14c1.1,0 2,0.9 2,2v12c0,1.1 -0.9,2 -2,2H5c-1.1,0 -2,-0.9 -2,-2V6c0,-1.1 0.9,-2 2,-2zM5,6v5h6V6H5zM13,6v5h6V6h-6zM5,13v5h6v-5H5zM13,13v5h6v-5h-6z"/>
 </vector>

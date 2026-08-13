@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 底部导航：用项目内自带标准图标（ic_home/ic_playback/ic_settings 均已存在drawable），不引用android私有资源，避免resource linking报错。 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/nav_home"
         android:icon="@drawable/ic_home"

@@ -2,51 +2,53 @@
 <resources>
     <!-- ============== TP-Link Tapo 风格配色（浅色主题） ============== -->
 
-    <!-- 品牌主色：Tapo 蓝 -->
-    <color name="brand_primary">#00A6FF</color>
-    <color name="brand_primary_dark">#008AD6</color>
-    <color name="brand_primary_soft">#E6F5FF</color>
+    <!-- ========== TP-LINK 物联 2025 & 乐橙 Imou 官方配色 ========== -->
 
-    <!-- 品牌辅色：Tapo 青绿（高亮） -->
-    <color name="brand_accent">#00C48C</color>
-    <color name="brand_accent_soft">#E6FAF4</color>
+    <!-- 品牌主色：乐橙 Imou 蓝（更现代，不刺眼），与 TP-LINK 青绿双辅色系 -->
+    <color name="brand_primary">#2B7CFF</color>
+    <color name="brand_primary_dark">#1E64D6</color>
+    <color name="brand_primary_soft">#EAF1FF</color>
+
+    <!-- 品牌辅色：乐橙 Imou 青绿（在线/成功高亮） -->
+    <color name="brand_accent">#12C2A0</color>
+    <color name="brand_accent_soft">#E3F8F2</color>
 
     <!-- 警示色 -->
-    <color name="online_green">#00C48C</color>
-    <color name="offline_gray">#A0A7B1</color>
-    <color name="warning_orange">#FF7A00</color>
-    <color name="error_red">#FF4D4F</color>
+    <color name="online_green">#12C2A0</color>
+    <color name="offline_gray">#9AA3B2</color>
+    <color name="warning_orange">#FF8A3D</color>
+    <color name="error_red">#F5555B</color>
 
-    <!-- 背景：浅色主题 -->
-    <color name="bg_page">#F5F7FA</color>       <!-- 页面底色（浅灰白） -->
-    <color name="bg_card">#FFFFFF</color>       <!-- 卡片白色 -->
-    <color name="bg_card_2">#EFF3F8</color>     <!-- 次级卡片灰 -->
-    <color name="bg_dark">#1E222B</color>       <!-- 仍保留深色（预览页用） -->
+    <!-- 背景：极简浅灰白 + 卡片纯白，大圆角扁平化 -->
+    <color name="bg_page">#F4F6FB</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="bg_card_2">#EEF2F8</color>
+    <color name="bg_dark">#1A1E28</color>
 
     <!-- 分割线 -->
-    <color name="divider">#E6E9EF</color>
+    <color name="divider">#EEF0F5</color>
 
-    <!-- 文字颜色 -->
-    <color name="text_primary">#1E222B</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="text_tertiary">#A0A7B1</color>
-    <color name="text_hint">#B8BFCC</color>
+    <!-- 文字颜色：字重分明，标题-正文-辅助-占位4级区分 -->
+    <color name="text_primary">#131A2A</color>
+    <color name="text_secondary">#55607A</color>
+    <color name="text_tertiary">#98A1B8</color>
+    <color name="text_hint">#B8C0D4</color>
     <color name="white">#FFFFFF</color>
-    <color name="black">#1E222B</color>
+    <color name="black">#131A2A</color>
 
     <!-- 输入框 -->
-    <color name="input_bg">#F5F7FA</color>
+    <color name="input_bg">#F4F6FB</color>
 
     <!-- 按钮禁用 -->
-    <color name="btn_disabled">#C9CED6</color>
+    <color name="btn_disabled">#C3CADB</color>
 
-    <!-- ============ TP-Link 官方设置页图标圆形底色 ============ -->
-    <color name="icon_orange">#FF9500</color>
-    <color name="icon_teal">#00C48C</color>
-    <color name="icon_gray">#A0A7B1</color>
-    <color name="icon_blue">#00A6FF</color>
-    <color name="icon_purple">#7B61FF</color>
-    <color name="section_bg">#F0F2F5</color>
+    <!-- ============ 设置页图标圆形底色（乐橙/TP-LINK 风格：饱和度适中） ============ -->
+    <color name="icon_orange">#FF9548</color>
+    <color name="icon_teal">#12C2A0</color>
+    <color name="icon_gray">#98A1B8</color>
+    <color name="icon_blue">#2B7CFF</color>
+    <color name="icon_purple">#7A70FF</color>
+    <color name="section_bg">#F1F3F8</color>
 
     <!-- ============ 旧命名别名（兼容现有引用） ============ -->
     <color name="alarm_red">@color/error_red</color>

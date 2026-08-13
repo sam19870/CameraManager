@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置行图标背景：乐橙/TP-LINK 风格——彩色圆角方块（12dp圆角，图标色通过代码在iconWrap.setBackgroundTintList动态设置） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/brand_primary"/>
+    <corners android:radius="12dp"/>
+</shape>

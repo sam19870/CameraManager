@@ -1,39 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 设备卡片（首页2列网格）：统一用dimens.xml尺寸体系 → 手机/平板自适应自然不生硬 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:padding="6dp">
+    android:padding="@dimen/spacing_xs">
 
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent" android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/bg_card"
-        app:cardCornerRadius="14dp"
-        app:cardElevation="2dp"
+        app:cardCornerRadius="@dimen/card_radius_md"
+        app:cardElevation="0dp"
         app:strokeWidth="0dp"
         app:rippleColor="@color/brand_primary_soft">
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- 摄像头占位图区域 (带品牌色圆角渐变) -->
             <FrameLayout
-                android:layout_width="match_parent" android:layout_height="96dp"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/device_cover_height"
                 android:background="@drawable/bg_camera_cover"
-                android:paddingHorizontal="14dp" android:paddingVertical="10dp">
+                android:paddingHorizontal="@dimen/spacing_md"
+                android:paddingVertical="@dimen/spacing_sm">
 
                 <ImageView
-                    android:layout_width="24dp" android:layout_height="24dp"
+                    android:layout_width="@dimen/icon_lg" android:layout_height="@dimen/icon_lg"
                     android:layout_gravity="start|top"
                     android:src="@drawable/ic_camera"
                     app:tint="#80FFFFFF"/>
 
-                <!-- 在线状态小圆点 -->
                 <LinearLayout
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:layout_gravity="end|top" android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:background="@drawable/bg_status_pill"
-                    android:paddingStart="6dp" android:paddingEnd="8dp"
+                    android:paddingStart="@dimen/spacing_xs" android:paddingEnd="8dp"
                     android:paddingTop="2dp" android:paddingBottom="2dp">
                     <View android:id="@+id/statusDot"
                         android:layout_width="6dp" android:layout_height="6dp"
@@ -41,36 +42,37 @@
                     <TextView android:id="@+id/statusText"
                         android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:layout_marginStart="4dp" android:textColor="@color/white"
-                        android:textSize="10sp" android:text="离线"/>
+                        android:textSize="@dimen/text_xxs" android:text="离线"/>
                 </LinearLayout>
             </FrameLayout>
 
-            <!-- 信息区 -->
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:paddingHorizontal="12dp"
-                android:paddingTop="10dp" android:paddingBottom="12dp">
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/spacing_md"
+                android:paddingTop="@dimen/spacing_sm"
+                android:paddingBottom="@dimen/spacing_md">
 
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical">
                     <TextView android:id="@+id/deviceName"
                         android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1" android:textColor="@color/text_primary"
-                        android:textSize="14sp" android:textStyle="bold"
+                        android:textSize="@dimen/text_md" android:textStyle="bold"
                         android:maxLines="1" android:ellipsize="end"
                         android:text="摄像头"/>
                     <ImageView android:id="@+id/devicePtz"
-                        android:layout_width="16dp" android:layout_height="16dp"
+                        android:layout_width="@dimen/icon_sm" android:layout_height="@dimen/icon_sm"
                         android:src="@drawable/ic_ptz"
-                        android:layout_marginEnd="6dp"
+                        android:layout_marginEnd="@dimen/spacing_xs"
                         app:tint="@color/text_tertiary"/>
                     <ImageView android:id="@+id/deviceAudio"
-                        android:layout_width="16dp" android:layout_height="16dp"
+                        android:layout_width="@dimen/icon_sm" android:layout_height="@dimen/icon_sm"
                         android:src="@drawable/ic_audio"
                         app:tint="@color/text_tertiary"/>
                 </LinearLayout>
 
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:orientation="horizontal"
+                    android:layout_marginTop="@dimen/spacing_xs" android:orientation="horizontal"
                     android:gravity="center_vertical">
                     <ImageView android:layout_width="11dp" android:layout_height="11dp"
                         android:src="@drawable/ic_ip"
@@ -79,23 +81,23 @@
                         android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="4dp" android:textColor="@color/text_tertiary"
-                        android:textSize="11sp" android:maxLines="1" android:ellipsize="end"
+                        android:textSize="@dimen/text_xs" android:maxLines="1" android:ellipsize="end"
                         android:text="192.168.1.10:554"/>
                 </LinearLayout>
 
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:orientation="horizontal"
+                    android:layout_marginTop="@dimen/spacing_xs" android:orientation="horizontal"
                     android:gravity="center_vertical">
                     <TextView android:id="@+id/deviceVendor"
                         android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:textColor="@color/brand_primary"
                         android:background="@drawable/bg_tag_blue"
                         android:paddingHorizontal="6dp" android:paddingVertical="1.5dp"
-                        android:textSize="10sp" android:text="ONVIF"/>
+                        android:textSize="@dimen/text_xxs" android:text="ONVIF"/>
                     <TextView android:id="@+id/deviceProfile"
                         android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1" android:gravity="end"
-                        android:textColor="@color/text_secondary" android:textSize="11sp"
+                        android:textColor="@color/text_secondary" android:textSize="@dimen/text_xs"
                         android:text="标清"/>
                 </LinearLayout>
             </LinearLayout>

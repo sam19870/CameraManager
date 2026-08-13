@@ -11,23 +11,29 @@ import java.io.File
 import java.util.Date
 
 /**
- * 全局防闪退护网（Cockroach 式）：
+ * 全局防闪退护网（v2）：
  *
- *  1. 通过 ActivityLifecycleCallbacks 记录当前前台 Activity；
+ *  1. ActivityLifecycleCallbacks 记录前台 Activity；
  *  2. 接管主线程未捕获异常：Toast 提示 + 关闭出问题页面 + 恢复主循环，
- *     用户看到的是「某个页面弹了一下提示并返回」，而不是整个 App 闪退；
- *  3. 堆栈写入 filesDir/last_crash.log 便于排查根因；
- *  4. 非主线程异常仅记录日志，不让进程崩溃。
+ *     并且加「6秒熔断」：相同异常 6 秒内不再重复 toast，防止点按钮反复点导致
+ *     Handler.post 积压而出现二次崩溃；
+ *  3. 堆栈写入 filesDir/last_crash.log；
+ *  4. 非主线程异常仅记录日志；
+ *  5. 通过 PackageManager.resolveActivity 的二次校验在调用端（safeStart）。
  */
 object CrashGuard {
 
     private const val TAG = "CrashGuard"
+    private const val FUSE_MS = 6_000L
 
     @Volatile
     var currentActivity: Activity? = null
         private set
 
     private var installed = false
+    private var lastMsgKey: String? = null
+    private var lastToastAt: Long = 0L
+    private val main = Handler(Looper.getMainLooper())
 
     fun install(app: Application) {
         if (installed) return
@@ -49,27 +55,40 @@ object CrashGuard {
             Log.e(TAG, "uncaught on thread ${t.name}: ${e.message}", e)
             runCatching {
                 File(app.filesDir, "last_crash.log").writeText(
-                    "${Date()}\nthread=${t.name}\n${Log.getStackTraceString(e)}"
+                    "${Date()}\nthread=${t.name}\n${android.util.Log.getStackTraceString(e)}"
                 )
             }
             if (t == Looper.getMainLooper().thread) {
-                // 主线程异常：提示 + 关掉出事页面 + 恢复消息循环，避免系统闪退弹窗
-                Handler(Looper.getMainLooper()).post {
-                    runCatching {
-                        Toast.makeText(app, "页面异常已拦截：${e.message ?: e.javaClass.simpleName}",
-                            Toast.LENGTH_LONG).show()
+                val key = (e.message ?: e.javaClass.name).let { if (it.length > 30) it.substring(0, 30) else it }
+                val now = System.currentTimeMillis()
+                val shouldToast = (lastMsgKey != key) || (now - lastToastAt > FUSE_MS)
+                lastMsgKey = key
+                lastToastAt = now
+                if (shouldToast) {
+                    main.post {
+                        runCatching {
+                            Toast.makeText(app, "异常已拦截: ${shortMsg(e)}",
+                                Toast.LENGTH_LONG).show()
+                        }
                     }
+                }
+                main.post {
                     runCatching { currentActivity?.finish() }
                 }
                 while (true) {
                     try {
                         Looper.loop()
                     } catch (e2: Throwable) {
-                        Log.e(TAG, "re-loop caught: ${e2.message}", e2)
+                        Log.e(TAG, "re-loop caught: ${shortMsg(e2)}", e2)
                     }
                 }
             }
-            // 子线程异常：吞掉，仅记录，保证进程存活
+            // 子线程异常：吞掉，保证进程存活
         }
+    }
+
+    private fun shortMsg(t: Throwable): String {
+        val raw = t.message ?: t.javaClass.simpleName
+        return if (raw.length > 48) raw.substring(0, 48) + "…" else raw
     }
 }

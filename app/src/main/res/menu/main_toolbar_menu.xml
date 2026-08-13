@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 顶部工具栏：全部使用项目内自带图标xml（ic_scan/ic_view_quilt/ic_add均已存在），避免引用android私有资源崩溃；文字跟随官方APP风格：扫描/分屏/添加。 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_scan"
         android:icon="@drawable/ic_scan"
-        android:title="扫描局域网"
-        app:showAsAction="always"/>
+        android:title="扫描"
+        app:showAsAction="always|withText"/>
     <item
         android:id="@+id/action_multiscreen"
         android:icon="@drawable/ic_view_quilt"
-        android:title="分屏预览"
-        app:showAsAction="always"/>
+        android:title="分屏"
+        app:showAsAction="always|withText"/>
     <item
         android:id="@+id/action_add"
         android:icon="@drawable/ic_add"
-        android:title="添加设备"
-        app:showAsAction="always"/>
+        android:title="添加"
+        app:showAsAction="always|withText"/>
 </menu>

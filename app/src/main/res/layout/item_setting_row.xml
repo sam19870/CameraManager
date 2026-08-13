@@ -1,35 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 设置行模板：dimens自适应，手机/平板统一视觉风格（居中对齐，圆润点击反馈） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="56dp"
+    android:layout_width="match_parent" android:layout_height="@dimen/row_height"
     android:orientation="horizontal" android:gravity="center_vertical"
     android:background="?attr/selectableItemBackground"
-    android:paddingStart="16dp" android:paddingEnd="12dp">
+    android:paddingStart="@dimen/spacing_lg" android:paddingEnd="@dimen/spacing_md">
 
-    <ImageView android:id="@+id/ivIcon"
-        android:layout_width="24dp" android:layout_height="24dp"
-        android:contentDescription="icon"/>
+    <!-- 图标圆形卡片背景：彩色圆角方片（乐橙/TP-LINK风格） -->
+    <FrameLayout
+        android:id="@+id/iconWrap"
+        android:layout_width="@dimen/icon_circle_bg" android:layout_height="@dimen/icon_circle_bg"
+        android:background="@drawable/bg_icon_round">
+        <ImageView android:id="@+id/ivIcon"
+            android:layout_width="@dimen/icon_md" android:layout_height="@dimen/icon_md"
+            android:layout_gravity="center"
+            android:contentDescription="icon"
+            app:tint="@color/white"/>
+    </FrameLayout>
 
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
         android:layout_weight="1" android:orientation="vertical"
-        android:layout_marginStart="14dp">
+        android:layout_marginStart="@dimen/spacing_md">
         <TextView android:id="@+id/tvTitle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="@color/text_primary" android:textSize="14sp"
+            android:textColor="@color/text_primary" android:textSize="@dimen/text_md"
             android:textStyle="bold"/>
         <TextView android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary" android:textSize="11sp"
-            android:layout_marginTop="1dp" android:visibility="gone"/>
+            android:textColor="@color/text_secondary" android:textSize="@dimen/text_xs"
+            android:layout_marginTop="2dp" android:visibility="gone"/>
     </LinearLayout>
 
     <TextView android:id="@+id/tvValue"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="@color/text_tertiary" android:textSize="12sp"
-        android:layout_marginEnd="6dp"/>
+        android:textColor="@color/text_tertiary" android:textSize="@dimen/text_sm"
+        android:layout_marginEnd="@dimen/spacing_sm"/>
 
     <ImageView android:id="@+id/ivArrow"
-        android:layout_width="20dp" android:layout_height="20dp"
+        android:layout_width="@dimen/icon_sm" android:layout_height="@dimen/icon_sm"
         android:src="@drawable/ic_chevron_right"
-        android:contentDescription="arrow"/>
+        android:contentDescription="arrow"
+        app:tint="@color/text_tertiary"/>
 </LinearLayout>

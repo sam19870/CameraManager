@@ -111,11 +111,11 @@ class SettingsActivity : AppCompatActivity() {
 
     // ================= 智能侦测宫格（官方彩色圆标） =================
     private fun buildDetectGrid() {
-        addDetectItem(R.drawable.ic_person, R.color.icon_orange, "人形侦测", "human", true)
-        addDetectItem(R.drawable.ic_detect, R.color.icon_teal, "移动侦测", "motion", true)
-        addDetectItem(R.drawable.ic_video_block, R.color.icon_gray, "视频遮挡", "block", false)
-        addDetectItem(R.drawable.ic_crossing, R.color.icon_gray, "越界侦测", "crossing", false)
-        addDetectItem(R.drawable.ic_grid, R.color.icon_gray, "区域入侵", "intrusion", false)
+        addDetectItem(android.R.drawable.ic_menu_myplaces, R.color.icon_orange, "人形侦测", "human", true)
+        addDetectItem(android.R.drawable.ic_menu_rotate, R.color.icon_teal, "移动侦测", "motion", true)
+        addDetectItem(android.R.drawable.ic_menu_close_clear_cancel, R.color.icon_gray, "视频遮挡", "block", false)
+        addDetectItem(android.R.drawable.ic_menu_sort_by_size, R.color.icon_gray, "越界侦测", "crossing", false)
+        addDetectItem(android.R.drawable.ic_menu_edit, R.color.icon_gray, "区域入侵", "intrusion", false)
     }
 
     private fun addDetectItem(iconRes: Int, colorRes: Int, label: String, type: String, enabled: Boolean) {
@@ -168,13 +168,13 @@ class SettingsActivity : AppCompatActivity() {
     // ================= 通用行（不依赖设备对象） =================
     private fun bindCommonRows(deviceId: Long) {
         // 消息与报警
-        setRow(binding.rowNotify, R.drawable.ic_alarm, R.color.icon_blue, "消息提醒", value = "已开启")
+        setRow(binding.rowNotify, android.R.drawable.ic_dialog_alert, R.color.icon_blue, "消息提醒", value = "已开启")
         binding.rowNotify.root.setOnClickListener {
             notifyOn = !notifyOn
             binding.rowNotify.tvValue.text = if (notifyOn) "已开启" else "已关闭"
             toast(if (notifyOn) "消息提醒已开启" else "消息提醒已关闭")
         }
-        setRow(binding.rowAlarm, R.drawable.ic_siren, R.color.icon_orange, "摄像机报警", value = "已开启")
+        setRow(binding.rowAlarm, android.R.drawable.ic_lock_silent_mode_off, R.color.icon_orange, "摄像机报警", value = "已开启")
         binding.rowAlarm.root.setOnClickListener {
             alarmOn = !alarmOn
             binding.rowAlarm.tvValue.text = if (alarmOn) "已开启" else "已关闭"
@@ -182,21 +182,21 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // 侦测与网络
-        setRow(binding.rowRules, R.drawable.ic_detect, R.color.icon_teal, "侦测规则",
+        setRow(binding.rowRules, android.R.drawable.ic_menu_recent_history, R.color.icon_teal, "侦测规则",
             subtitle = "人形/移动/人脸侦测与触发动作")
         binding.rowRules.root.setOnClickListener { showRulesBottomSheet(deviceId) }
 
-        setRow(binding.rowRegion, R.drawable.ic_grid, R.color.icon_purple, "自定义侦测区域",
+        setRow(binding.rowRegion, android.R.drawable.ic_menu_crop, R.color.icon_purple, "自定义侦测区域",
             subtitle = "只在框选区域内触发告警")
         binding.rowRegion.root.setOnClickListener {
             safeStart(com.cameramanager.app.ui.detection.DetectionRegionActivity.intent(this, deviceId))
         }
 
-        setRow(binding.rowAlarmLog, R.drawable.ic_alarm, R.color.icon_orange, "告警记录",
+        setRow(binding.rowAlarmLog, android.R.drawable.ic_menu_agenda, R.color.icon_orange, "告警记录",
             subtitle = "查看历史告警与截图")
         binding.rowAlarmLog.root.setOnClickListener { safeStart(AlarmLogActivity.intent(this, deviceId)) }
 
-        setRow(binding.rowRoute, R.drawable.ic_network, R.color.icon_blue, "内网 / 穿透路由",
+        setRow(binding.rowRoute, android.R.drawable.ic_menu_info_details, R.color.icon_blue, "内网 / 穿透路由",
             subtitle = "绑定 SSID 或穿透通道，内网/公网自动切换")
         binding.rowRoute.root.setOnClickListener { device?.let { showRouteDialog(it) } }
     }
@@ -204,16 +204,16 @@ class SettingsActivity : AppCompatActivity() {
     // ================= 依赖设备的行 =================
     private fun bindDeviceRows(deviceId: Long, d: Device) {
         // 设备控制 -> 子页
-        setRow(binding.rowDeviceControl, R.drawable.ic_toolbox, R.color.icon_blue, "设备控制")
+        setRow(binding.rowDeviceControl, android.R.drawable.ic_menu_preferences, R.color.icon_blue, "设备控制")
         binding.rowDeviceControl.root.setOnClickListener {
             safeStart(DeviceControlActivity.intent(this, deviceId))
         }
 
         // 存储
-        setRow(binding.rowCloud, R.drawable.ic_cloud, R.color.icon_blue, "云存储", value = "未开启")
+        setRow(binding.rowCloud, android.R.drawable.ic_menu_upload, R.color.icon_blue, "云存储", value = "未开启")
         binding.rowCloud.root.setOnClickListener { unsupportedToast() }
 
-        setRow(binding.rowSd, R.drawable.ic_sd, R.color.icon_teal, "SD卡录像", value = "已开启")
+        setRow(binding.rowSd, android.R.drawable.ic_menu_save, R.color.icon_teal, "SD卡录像", value = "已开启")
         binding.rowSd.root.setOnClickListener {
             val items = arrayOf("全天持续录像", "移动侦测触发", "定时录像")
             AlertDialog.Builder(this).setTitle("SD卡录像模式")
@@ -234,7 +234,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // 智能工具
-        setRow(binding.rowTrack, R.drawable.ic_ptz, R.color.icon_teal, "智能追踪",
+        setRow(binding.rowTrack, android.R.drawable.ic_menu_compass, R.color.icon_teal, "智能追踪",
             subtitle = "检测到移动物体时，摄像机自动转动镜头跟踪定位",
             value = if (d.autoTrack) "已开启" else "未开启")
         binding.rowTrack.root.setOnClickListener {
@@ -251,7 +251,7 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        setRow(binding.rowVoiceTip, R.drawable.ic_volume, R.color.icon_purple, "个性语音提示",
+        setRow(binding.rowVoiceTip, android.R.drawable.ic_btn_speak_now, R.color.icon_purple, "个性语音提示",
             subtitle = "物体进出参考线时播放语音", value = if (voiceTipOn) "已开启" else "已关闭")
         binding.rowVoiceTip.root.setOnClickListener {
             voiceTipOn = !voiceTipOn
@@ -259,7 +259,7 @@ class SettingsActivity : AppCompatActivity() {
             toast(if (voiceTipOn) "个性语音提示已开启" else "个性语音提示已关闭")
         }
 
-        setRow(binding.rowOffline, R.drawable.ic_network, R.color.icon_orange, "掉线提醒",
+        setRow(binding.rowOffline, android.R.drawable.ic_dialog_email, R.color.icon_orange, "掉线提醒",
             subtitle = "侦测到设备掉线时，手机会收到消息提醒", value = if (offlineTipOn) "已开启" else "已关闭")
         binding.rowOffline.root.setOnClickListener {
             offlineTipOn = !offlineTipOn
@@ -268,7 +268,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // 设备管理
-        setRow(binding.rowFirmware, R.drawable.ic_firmware, R.color.icon_blue, "固件升级",
+        setRow(binding.rowFirmware, android.R.drawable.ic_menu_upload_you_tube, R.color.icon_blue, "固件升级",
             subtitle = "检查摄像头最新固件")
         binding.rowFirmware.root.setOnClickListener {
             if (capabilityQueried && !capabilities.firmwareUpgrade) { unsupportedToast(); return@setOnClickListener }
@@ -291,7 +291,7 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        setRow(binding.rowReboot, R.drawable.ic_reboot, R.color.icon_orange, "重启摄像头")
+        setRow(binding.rowReboot, android.R.drawable.ic_menu_today, R.color.icon_orange, "重启摄像头")
         binding.rowReboot.root.setOnClickListener {
             AlertDialog.Builder(this).setTitle("重启摄像头")
                 .setMessage("摄像头将重启，约 60 秒后恢复。确定？")
@@ -309,7 +309,7 @@ class SettingsActivity : AppCompatActivity() {
                 }.setNegativeButton("取消", null).show()
         }
 
-        setRow(binding.rowSelfCheck, R.drawable.ic_info, R.color.icon_teal, "设备自检",
+        setRow(binding.rowSelfCheck, android.R.drawable.ic_menu_search, R.color.icon_teal, "设备自检",
             subtitle = "网络/SD卡/温度等状态")
         binding.rowSelfCheck.root.setOnClickListener {
             lifecycleScope.launch {
@@ -337,7 +337,7 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        setRow(binding.rowDeviceInfo, R.drawable.ic_info, R.color.icon_gray, "设备信息")
+        setRow(binding.rowDeviceInfo, android.R.drawable.ic_menu_more, R.color.icon_gray, "设备信息")
         binding.rowDeviceInfo.root.setOnClickListener {
             val info = buildString {
                 append("名称：${d.name}\n")
@@ -355,7 +355,7 @@ class SettingsActivity : AppCompatActivity() {
                 .setMessage(info).setPositiveButton("关闭", null).show()
         }
 
-        setRow(binding.rowDelete, R.drawable.ic_close, R.color.error_red, "删除设备")
+        setRow(binding.rowDelete, android.R.drawable.ic_menu_delete, R.color.error_red, "删除设备")
         binding.rowDelete.tvTitle.setTextColor(getColor(R.color.alarm_red))
         binding.rowDelete.ivArrow.visibility = View.GONE
         binding.rowDelete.root.setOnClickListener {
@@ -423,8 +423,14 @@ class SettingsActivity : AppCompatActivity() {
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     private fun safeStart(intent: Intent) {
-        runCatching { startActivity(intent) }
-            .onFailure { t -> toast("打开页面失败: ${t.message ?: "未知错误"}") }
+        runCatching {
+            val component = intent.resolveActivity(packageManager)
+            if (component == null) {
+                toast("功能未注册: ${intent.component?.className ?: intent.action}")
+                return
+            }
+            startActivity(intent)
+        }.onFailure { t -> toast("打开失败: ${t.message ?: t.javaClass.simpleName}".take(44)) }
     }
 
     // ================= 子对话框 =================
