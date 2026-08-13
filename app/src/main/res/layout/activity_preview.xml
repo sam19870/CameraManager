@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_close"/>
+
+    <FrameLayout
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1.4" android:background="#000000">
+
+        <SurfaceView android:id="@+id/surface"
+            android:layout_width="match_parent" android:layout_height="match_parent"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="top|start" android:layout_margin="12dp"
+            android:orientation="vertical">
+
+            <TextView android:id="@+id/statusText"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:background="#80000000" android:padding="6dp"
+                android:textColor="@color/white" android:textSize="12sp" android:text="正在打开…"/>
+
+            <TextView android:id="@+id/routeText"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:background="#80000000"
+                android:padding="6dp" android:textColor="#B8E0FF" android:textSize="12sp"
+                android:text="选路中…"/>
+        </LinearLayout>
+
+        <TextView android:id="@+id/profileText"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="top|end" android:layout_margin="12dp"
+            android:background="#80000000" android:padding="6dp"
+            android:textColor="@color/white" android:textSize="12sp" android:text="标清"/>
+
+        <TextView android:id="@+id/timeoutText"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end" android:layout_margin="12dp"
+            android:background="#80CC3300" android:padding="6dp"
+            android:textColor="@color/white" android:textSize="12sp"
+            android:text="超时: 0" android:visibility="gone"/>
+
+        <View android:id="@+id/recordIndicator"
+            android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_gravity="bottom|start" android:layout_margin="14dp"
+            android:background="@drawable/dot_online" android:visibility="gone"/>
+
+        <LinearLayout android:id="@+id/reconnectOverlay"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:orientation="vertical"
+            android:gravity="center" android:visibility="gone"
+            android:background="#B0000000" android:padding="20dp">
+            <TextView android:id="@+id/reconnectHint"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="@color/white" android:textSize="14sp"
+                android:text="画面无响应，已停止自动重连"/>
+            <Button android:id="@+id/btnReconnect"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:backgroundTint="@color/brand_accent"
+                android:textColor="@color/black" android:text="重连"/>
+        </LinearLayout>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:padding="10dp"
+        android:background="@color/bg_card" android:gravity="center">
+        <Button android:id="@+id/btnProfile" style="@style/ActionButton" android:text="@string/resolution"/>
+        <Button android:id="@+id/btnRotate" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/flip"/>
+        <Button android:id="@+id/btnMirror" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/mirror"/>
+        <Button android:id="@+id/btnSnapshot" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/snapshot"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:padding="10dp"
+        android:background="@color/bg_card" android:gravity="center">
+        <Button android:id="@+id/btnRecord" style="@style/ActionButton" android:text="@string/record"/>
+        <Button android:id="@+id/btnDeterrence" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/deterrence"/>
+        <Button android:id="@+id/btnAudio" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/voice_intercom"/>
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:scrollbars="none" android:background="@color/bg_card">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:padding="8dp">
+            <Button android:id="@+id/btnPreset" style="@style/ActionButton" android:text="预置位"/>
+            <Button android:id="@+id/btnHome" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="一键复位"/>
+            <Button android:id="@+id/btnCruise" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="自动巡航"/>
+            <Button android:id="@+id/btnAutoTrack" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="AI追踪"/>
+            <Button android:id="@+id/btnNight" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="夜视"/>
+            <Button android:id="@+id/btnPrivacy" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="隐私遮蔽"/>
+            <Button android:id="@+id/btnWhiteLight" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="白光灯"/>
+            <Button android:id="@+id/btnSiren" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="警笛"/>
+            <Button android:id="@+id/btnFloating" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="悬浮窗"/>
+            <Button android:id="@+id/btnManage" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="设备管理"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:background="@color/bg_dark">
+
+        <LinearLayout android:id="@+id/ptzPanel"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center">
+                <Button android:id="@+id/ptzLeftUp" style="@style/PtzButton" android:text="↖"/>
+                <Button android:id="@+id/ptzUp" style="@style/PtzButton" android:layout_marginHorizontal="8dp" android:text="↑"/>
+                <Button android:id="@+id/ptzRightUp" style="@style/PtzButton" android:text="↗"/>
+            </LinearLayout>
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center" android:layout_marginVertical="8dp">
+                <Button android:id="@+id/ptzLeft" style="@style/PtzButton" android:text="←"/>
+                <View android:layout_width="48dp" android:layout_height="48dp" android:layout_marginHorizontal="8dp"/>
+                <Button android:id="@+id/ptzRight" style="@style/PtzButton" android:text="→"/>
+            </LinearLayout>
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center">
+                <Button android:id="@+id/ptzLeftDown" style="@style/PtzButton" android:text="↙"/>
+                <Button android:id="@+id/ptzDown" style="@style/PtzButton" android:layout_marginHorizontal="8dp" android:text="↓"/>
+                <Button android:id="@+id/ptzRightDown" style="@style/PtzButton" android:text="↘"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_gravity="center"
+                android:layout_marginTop="10dp">
+                <Button android:id="@+id/ptzZoomIn" style="@style/PtzButton" android:text="＋" android:layout_marginEnd="12dp"/>
+                <Button android:id="@+id/ptzZoomOut" style="@style/PtzButton" android:text="－"/>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

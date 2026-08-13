@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">摄像头管家</string>
+    <string name="add_device">添加设备</string>
+    <string name="multi_view">多画面</string>
+    <string name="scan_lan">局域网扫描</string>
+    <string name="rescan">重新扫描</string>
+    <string name="manual_add">手动添加</string>
+    <string name="test_connection">测试连接</string>
+    <string name="save">保存</string>
+    <string name="device_name">设备名称</string>
+    <string name="ip_address">IP 地址</string>
+    <string name="port">端口</string>
+    <string name="rtsp_path">RTSP 路径</string>
+    <string name="username">用户名(可选)</string>
+    <string name="password">密码(可选)</string>
+    <string name="supports_ptz">支持云台(ONVIF)</string>
+    <string name="onvif_port">ONVIF 端口</string>
+    <string name="supports_audio">支持语音对讲</string>
+    <string name="alarms">告警</string>
+    <string name="preview">实时预览</string>
+    <string name="playback">历史回放</string>
+    <string name="settings">设置</string>
+    <string name="record">录像</string>
+    <string name="snapshot">截图</string>
+    <string name="flip">翻转</string>
+    <string name="mirror">镜像</string>
+    <string name="deterrence">声光威慑</string>
+    <string name="voice_intercom">语音对讲</string>
+    <string name="resolution">分辨率</string>
+    <string name="add_rule">添加规则</string>
+    <string name="alarm_log">告警记录</string>
+    <string name="sensitivity">灵敏度</string>
+    <string name="type_human">人形检测</string>
+    <string name="type_motion">移动侦测</string>
+    <string name="type_track">移动追踪</string>
+    <string name="action_record">触发录像</string>
+    <string name="action_notify">推送通知</string>
+    <string name="action_sound">警示音</string>
+    <string name="action_light">声光威慑</string>
+    <string name="start_intercom">开始对讲</string>
+    <string name="empty_devices">还没有添加设备\n点击右下角按钮扫描局域网摄像头</string>
+    <string name="empty_recordings">当日无录像</string>
+    <string name="device_manage">设备管理</string>
+    <string name="detection_region">自定义侦测区域</string>
+    <string name="preset">预置位</string>
+    <string name="home">一键复位</string>
+    <string name="cruise">自动巡航</string>
+    <string name="auto_track">AI追踪</string>
+    <string name="night_vision">夜视</string>
+    <string name="privacy_mask">隐私遮蔽</string>
+    <string name="white_light">白光灯</string>
+    <string name="siren">警笛</string>
+    <string name="floating_window">悬浮窗</string>
+
+    <!-- 内网穿透 -->
+    <string name="tunnel_manage">内网穿透</string>
+    <string name="tunnel_hint">配置 frp / ngrok / 端口转发 / ZeroTier 等公网入口。设备绑定通道后，手机不在设备内网时会自动走穿透。</string>
+    <string name="tunnel_empty">还没有穿透通道\n点击右下角按钮添加</string>
+    <string name="route_setting">路由 / 穿透设置</string>
+
+    <!-- 添加设备界面：厂商凭证填写指引（让小白用户知道填什么） -->
+    <string name="vendor_hint_tapo">【TP-Link Tapo】\n用户名固定填 admin；\n密码填你在 Tapo 官方 App 里给摄像头设置的「设备密码」（即 Tapo 云账号密码，配网时设的那个，不是 WiFi 密码）。\n无需任何开发者 key/secret。</string>
+    <string name="vendor_hint_imou">【乐橙 Imou】\n用户名固定填 admin；\n密码填摄像头自身的 admin 密码（机身贴纸上有，或在乐橙官方 App「设备设置」里设过的那个）。\n无需任何开发者 appId/appSecret。</string>
+    <string name="vendor_hint_generic">【通用 ONVIF】\n用户名/密码填摄像头 ONVIF 账户（通常 admin/admin 或机身贴纸标注）；\n需勾选「支持云台」并填 ONVIF 端口（常见 2020/8080/80）。</string>
+</resources>

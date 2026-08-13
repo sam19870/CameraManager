@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_close"/>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="侦测类型" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
+            <RadioGroup android:id="@+id/typeGroup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:layout_marginBottom="16dp">
+                <RadioButton android:id="@+id/typeHuman"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary" android:checked="true"
+                    android:text="@string/type_human"/>
+                <RadioButton android:id="@+id/typeMotion"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:text="@string/type_motion"/>
+                <RadioButton android:id="@+id/typeTrack"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:text="@string/type_track"/>
+            </RadioGroup>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/sensitivity" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp"/>
+            <SeekBar android:id="@+id/sensitivity"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="4" android:progress="2" android:layout_marginBottom="16dp"/>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="触发动作" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
+            <CheckBox android:id="@+id/actionRecord"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="@color/text_primary" android:checked="true"
+                android:text="@string/action_record"/>
+            <CheckBox android:id="@+id/actionNotify"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="@color/text_primary" android:checked="true"
+                android:text="@string/action_notify"/>
+            <CheckBox android:id="@+id/actionSound"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:text="@string/action_sound"/>
+            <CheckBox android:id="@+id/actionLight"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:text="@string/action_light"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchAutoTrack"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:textColor="@color/text_primary"
+                android:text="@string/auto_track"/>
+
+            <Button android:id="@+id/btnSave"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="@color/brand_accent"
+                android:textColor="@color/black" android:text="@string/save"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

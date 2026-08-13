@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/action_alarms"
+        android:icon="@drawable/ic_alarm"
+        android:title="@string/alarms"
+        android:showAsAction="ifRoom"/>
+    <item android:id="@+id/action_multi"
+        android:icon="@drawable/ic_grid"
+        android:title="@string/multi_view"
+        android:showAsAction="ifRoom"/>
+    <item android:id="@+id/action_tunnel"
+        android:title="@string/tunnel_manage"
+        android:showAsAction="never"/>
+</menu>

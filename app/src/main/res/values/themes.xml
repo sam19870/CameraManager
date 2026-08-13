@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.CameraManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/brand_primary_dark</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogDark</item>
+    </style>
+
+    <style name="AlertDialogDark" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:background">@color/bg_card</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="CardDark">
+        <item name="android:background">@color/bg_card</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <style name="PtzButton">
+        <item name="android:background">@drawable/bg_ptz_button</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="ActionButton">
+        <item name="android:background">@drawable/bg_action_button</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+</resources>

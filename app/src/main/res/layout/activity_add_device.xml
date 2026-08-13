@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_close"/>
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="match_parent">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/device_name" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editName" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/ip_address" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editHost" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="text"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/port" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPort" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:text="554" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/rtsp_path" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPath" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="stream0"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/username" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editUser" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/password" android:layout_marginBottom="12dp"
+                app:passwordToggleEnabled="true">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPass" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="textPassword"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="设备类型" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioGroup android:id="@+id/vendorGroup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="12dp">
+                <RadioButton android:id="@+id/vendorGeneric"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/text_primary"
+                    android:checked="true" android:text="通用ONVIF"/>
+                <RadioButton android:id="@+id/vendorTapo"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/text_primary"
+                    android:text="TP-Link Tapo"/>
+                <RadioButton android:id="@+id/vendorImou"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/text_primary"
+                    android:text="乐橙"/>
+            </RadioGroup>
+
+            <TextView android:id="@+id/vendorHint"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:background="@color/bg_card" android:padding="12dp"
+                android:textColor="@color/text_secondary" android:textSize="12sp"
+                android:lineSpacingExtra="2dp" android:layout_marginBottom="16dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchPtz"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/supports_ptz" android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp"/>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/onvif_port" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editOnvifPort" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:text="2020" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchAudio"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/supports_audio" android:textColor="@color/text_primary"
+                android:checked="true" android:layout_marginBottom="20dp"/>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp"
+                android:background="@color/bg_card" android:layout_marginBottom="12dp"/>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="路由 / 内网穿透（可选）" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="设备所在内网 WiFi 名(SSID)" android:layout_marginBottom="12dp"
+                app:helperText="连上此 WiFi 时走内网，否则走公网/穿透">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editLanSsid" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="绑定穿透通道" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp"/>
+            <Spinner android:id="@+id/spinnerTunnel"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="设备公网地址(DDNS/端口转发)" android:layout_marginBottom="12dp"
+                app:helperText="优先级低于穿透通道，高于内网地址">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPublicHost" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="textUri"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:hint="公网RTSP端口"
+                    android:layout_marginEnd="8dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editPublicPort" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:inputType="number"
+                        android:text="554" android:textColor="@color/text_primary"/>
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:hint="公网ONVIF端口">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editPublicOnvifPort" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:inputType="number"
+                        android:text="0" android:textColor="@color/text_primary"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <Button android:id="@+id/btnTest" style="@style/ActionButton"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_marginEnd="8dp" android:text="@string/test_connection"/>
+                <Button android:id="@+id/btnSave" android:layout_width="0dp"
+                    android:layout_weight="1" android:layout_height="wrap_content"
+                    android:backgroundTint="@color/brand_accent"
+                    android:textColor="@color/black" android:text="@string/save"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

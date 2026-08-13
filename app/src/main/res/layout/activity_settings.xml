@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_close"/>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:padding="12dp"
+                android:background="@drawable/bg_card_rounded" android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+                <View android:layout_width="40dp" android:layout_height="40dp"
+                    android:background="@drawable/ic_camera"/>
+                <TextView android:id="@+id/deviceInfo"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:layout_marginStart="12dp"
+                    android:textColor="@color/text_primary" android:textSize="14sp"/>
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="侦测规则" android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
+            <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerRules"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" android:layout_marginBottom="16dp"/>
+
+            <Button android:id="@+id/btnAddRule"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/ActionButton" android:layout_marginBottom="8dp"
+                android:text="@string/add_rule"/>
+
+            <Button android:id="@+id/btnAlarmLog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/ActionButton" android:layout_marginBottom="8dp"
+                android:text="@string/alarm_log"/>
+
+            <Button android:id="@+id/btnDetectionRegion"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/ActionButton" android:layout_marginBottom="8dp"
+                android:text="自定义侦测区域"/>
+
+            <Button android:id="@+id/btnRoute"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/ActionButton" android:layout_marginBottom="8dp"
+                android:text="@string/route_setting"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchNotify"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="异常事件消息推送" android:textColor="@color/text_primary"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

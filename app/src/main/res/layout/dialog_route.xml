@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="20dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:hint="设备所在内网 WiFi 名(SSID)" android:layout_marginBottom="12dp"
+        app:helperText="连上此 WiFi 时走内网，否则走公网/穿透">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editLanSsid" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="绑定穿透通道" android:textColor="@color/text_secondary"
+        android:layout_marginBottom="4dp"/>
+    <Spinner android:id="@+id/spinnerTunnel"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:hint="设备公网地址(DDNS/端口转发)" android:layout_marginBottom="12dp"
+        app:helperText="优先级低于穿透通道，高于内网地址">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editPublicHost" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:inputType="textUri"
+            android:textColor="@color/text_primary"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:hint="公网RTSP端口"
+            android:layout_marginEnd="8dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editPublicPort" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="number"
+                android:text="554" android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:hint="公网ONVIF端口">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editPublicOnvifPort" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="number"
+                android:text="0" android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark"
+    android:gravity="center_horizontal">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_close"/>
+
+    <View android:layout_width="80dp" android:layout_height="80dp"
+        android:layout_marginTop="60dp"
+        android:background="@drawable/ic_mic"/>
+
+    <TextView android:id="@+id/deviceName"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="20dp" android:textColor="@color/text_primary"
+        android:textSize="18sp" android:textStyle="bold" android:text="摄像头"/>
+
+    <TextView android:id="@+id/statusText"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:textColor="@color/text_secondary"
+        android:textSize="14sp" android:text="点击下方按钮开始对讲"/>
+
+    <com.cameramanager.app.ui.voice.LevelMeter android:id="@+id/levelMeter"
+        android:layout_width="240dp" android:layout_height="14dp"
+        android:layout_marginTop="40dp"/>
+
+    <Button android:id="@+id/btnToggle"
+        android:layout_width="200dp" android:layout_height="56dp"
+        android:layout_marginTop="60dp"
+        android:backgroundTint="@color/brand_primary"
+        android:textColor="@color/white" android:textSize="16sp"
+        android:text="@string/start_intercom"/>
+</LinearLayout>
