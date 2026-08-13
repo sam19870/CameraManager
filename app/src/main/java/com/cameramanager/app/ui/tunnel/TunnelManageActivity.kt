@@ -3,6 +3,7 @@ package com.cameramanager.app.ui.tunnel
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,14 +24,19 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * 内网穿透通道管理：自由增删改查多个通道，并显示连接状态（启用开关）。
+ * 内网穿透通道管理。
  *
- * 每条通道只是「公网入口 host:port」的描述（frp / ngrok / 端口转发 / ZeroTier
- * 均可），不区分底层实现 —— 因为 App 拿到 host:port 就能直接 RTSP/ONVIF 连过去。
+ * 设计完全按用户家里的结构 + SakuraFrp 官方文档：
+ *   - 老毛子路由器已经在跑 frpc 了，APP 不负责启动 frpc 进程
+ *   - 老毛子 frpc 把内网 (192.168.1.x/24) 映射到 SakuraFrp 的公网入口
+ *   - 这里只填公网入口连接信息：host(server_addr) / port(remote_port) / onvifPort
+ *     可选认证：token / 账号 / 密码
+ *     可选路由信息：lanCidr(内网网段) / lanGateway
  *
- * 设备在 [com.cameramanager.app.ui.scan.AddDeviceActivity] 或设备设置里绑定其中
- * 一条通道（[Tunnel.id] → [com.cameramanager.app.data.model.Device.tunnelId]），
- * 当手机不在设备内网时 [com.cameramanager.app.net.NetworkRouter] 会自动选用。
+ * 只要填了公网入口信息，NetworkRouter 就会根据：
+ *   - WiFi SSID 是否与设备绑定相同 → 走内网直连
+ *   - 否则目标 IP 是否在 lanCidr 内 → 走这个通道的 host:port
+ * 这样用户添加设备就可以直接填家里内网摄像头 192.168.1.108，无需关心内外网切换。
  */
 class TunnelManageActivity : AppCompatActivity() {
 
@@ -44,23 +50,30 @@ class TunnelManageActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityTunnelManageBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        runCatching {
+            binding = ActivityTunnelManageBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            setSupportActionBar(binding.toolbar)
+            supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            supportActionBar?.title = "内网穿透通道"
 
-        binding.recycler.layoutManager = LinearLayoutManager(this)
-        binding.recycler.adapter = adapter
+            binding.recycler.layoutManager = LinearLayoutManager(this)
+            binding.recycler.adapter = adapter
 
-        binding.fabAdd.setOnClickListener { showEditDialog(null) }
+            binding.fabAdd.setOnClickListener { showEditDialog(null) }
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                repo.observeTunnels().collectLatest { list ->
-                    adapter.submit(list)
-                    binding.emptyState.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    repo.observeTunnels().collectLatest { list ->
+                        adapter.submit(list)
+                        binding.emptyState.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+                    }
                 }
             }
+        }.onFailure { t ->
+            Log.e(TAG, "onCreate crashed: ${t.message}", t)
+            Toast.makeText(this, "穿透页加载失败: ${t.message}", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 
@@ -72,40 +85,77 @@ class TunnelManageActivity : AppCompatActivity() {
             dlgBinding.editHost.setText(editing.host)
             dlgBinding.editPort.setText(editing.port.toString())
             dlgBinding.editOnvifPort.setText(editing.onvifPort.toString())
+            dlgBinding.editToken.setText(editing.token.orEmpty())
+            dlgBinding.editAuthUser.setText(editing.authUser.orEmpty())
+            dlgBinding.editAuthPass.setText(editing.authPass.orEmpty())
+            dlgBinding.editLanCidr.setText(editing.lanCidr.orEmpty())
+            dlgBinding.editLanGateway.setText(editing.lanGateway.orEmpty())
             dlgBinding.editRemark.setText(editing.remark.orEmpty())
             dlgBinding.switchEnabled.isChecked = editing.enabled
         }
+
         AlertDialog.Builder(this)
             .setTitle(if (editing == null) "新增穿透通道" else "编辑通道")
             .setView(dlgBinding.root)
             .setPositiveButton("保存") { _, _ ->
                 val name = dlgBinding.editName.text.toString().trim()
                 val host = dlgBinding.editHost.text.toString().trim()
-                val port = dlgBinding.editPort.text.toString().trim().toIntOrNull() ?: 554
-                val onvif = dlgBinding.editOnvifPort.text.toString().trim().toIntOrNull() ?: 0
+                val port = dlgBinding.editPort.text.toString().trim().toIntOrNull() ?: 0
+                val onvifPort = dlgBinding.editOnvifPort.text.toString().trim().toIntOrNull() ?: 0
+                val token = dlgBinding.editToken.text.toString().trim().ifEmpty { null }
+                val authUser = dlgBinding.editAuthUser.text.toString().trim().ifEmpty { null }
+                val authPass = dlgBinding.editAuthPass.text.toString().trim().ifEmpty { null }
+                val lanCidr = dlgBinding.editLanCidr.text.toString().trim().ifEmpty { null }
+                val lanGateway = dlgBinding.editLanGateway.text.toString().trim().ifEmpty { null }
                 val remark = dlgBinding.editRemark.text.toString().trim().ifEmpty { null }
                 val enabled = dlgBinding.switchEnabled.isChecked
-                if (name.isEmpty() || host.isEmpty()) {
-                    Toast.makeText(this, "名称和地址不能为空", Toast.LENGTH_SHORT).show(); return@setPositiveButton
-                }
-                lifecycleScope.launch {
-                    if (editing == null) {
-                        repo.saveTunnel(Tunnel(
-                            name = name, host = host, port = port,
-                            onvifPort = onvif, enabled = enabled, remark = remark
-                        ))
-                        Toast.makeText(this@TunnelManageActivity, "已添加通道", Toast.LENGTH_SHORT).show()
-                    } else {
-                        repo.updateTunnel(editing.copy(
-                            name = name, host = host, port = port,
-                            onvifPort = onvif, enabled = enabled, remark = remark
-                        ))
-                        Toast.makeText(this@TunnelManageActivity, "已更新通道", Toast.LENGTH_SHORT).show()
+
+                when {
+                    name.isEmpty() -> toast("通道名称不能为空")
+                    host.isEmpty() -> toast("入口域名/IP 不能为空（server_addr）")
+                    port < 1 || port > 65535 -> toast("入口端口必须在 1~65535")
+                    onvifPort < 0 || onvifPort > 65535 -> toast("ONVIF 端口必须在 0~65535（0=不单独映射）")
+                    lanCidr != null && !isValidCidr(lanCidr) -> toast("内网网段 CIDR 格式不正确，例：192.168.1.0/24")
+                    else -> {
+                        lifecycleScope.launch {
+                            val entity = Tunnel(
+                                id = editing?.id ?: 0,
+                                name = name,
+                                host = host,
+                                port = port,
+                                onvifPort = onvifPort,
+                                token = token,
+                                authUser = authUser,
+                                authPass = authPass,
+                                lanCidr = lanCidr,
+                                lanGateway = lanGateway,
+                                enabled = enabled,
+                                remark = remark
+                            )
+                            if (editing == null) {
+                                repo.saveTunnel(entity)
+                                toast("已添加通道")
+                            } else {
+                                repo.updateTunnel(entity)
+                                toast("已更新通道")
+                            }
+                        }
                     }
                 }
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    /** 宽松校验 CIDR 格式："a.b.c.d/xx" */
+    private fun isValidCidr(cidr: String): Boolean {
+        val parts = cidr.split('/')
+        if (parts.size != 2) return false
+        val mask = parts[1].toIntOrNull() ?: return false
+        if (mask !in 0..32) return false
+        val segs = parts[0].split('.')
+        if (segs.size != 4) return false
+        return segs.all { s -> s.all { it.isDigit() } && (s.toIntOrNull() ?: -1) in 0..255 }
     }
 
     private fun confirmDelete(tunnel: Tunnel) {
@@ -122,15 +172,18 @@ class TunnelManageActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 
     companion object {
+        private const val TAG = "TunnelMgr"
         fun intent(context: Context): Intent =
             Intent(context, TunnelManageActivity::class.java)
     }
 }
 
-/** 通道列表适配器。开关即时反映启用状态（即「连接状态/开关显示」）。 */
+/** 通道列表适配器。开关即时反映启用状态。 */
 class TunnelAdapter(
     private val onToggle: (Tunnel, Boolean) -> Unit,
     private val onEdit: (Tunnel) -> Unit,
@@ -154,17 +207,28 @@ class TunnelAdapter(
         val t = items[position]
         with(holder.b) {
             tunnelName.text = t.name
-            tunnelHost.text = "RTSP：${t.host}:${t.port}"
-            tunnelOnvif.text = "ONVIF 端口：${if (t.onvifPort > 0) t.onvifPort else "无"}"
-            if (!t.remark.isNullOrEmpty()) {
+            // 公网入口 + 内网网段映射信息
+            tunnelHost.text = buildString {
+                append(t.host).append(':').append(t.port)
+                if (t.onvifPort > 0 && t.onvifPort != t.port) append("   ONVIF：").append(t.onvifPort)
+            }
+            tunnelOnvif.text = buildString {
+                append("内网网段：")
+                append(t.lanCidr ?: "<未填>")
+                if (!t.lanGateway.isNullOrEmpty()) append("  ·  网关 ").append(t.lanGateway)
+                if (!t.token.isNullOrBlank()) append("  ·  有 Token")
+            }
+            val rem = t.remark
+            if (!rem.isNullOrEmpty()) {
                 tunnelRemark.visibility = View.VISIBLE
-                tunnelRemark.text = "备注：${t.remark}"
+                tunnelRemark.text = "备注：$rem"
             } else {
                 tunnelRemark.visibility = View.GONE
             }
             // 避免开关回调时再次触发监听
             tunnelSwitch.setOnCheckedChangeListener(null)
             tunnelSwitch.isChecked = t.enabled
+            tunnelSwitch.text = if (t.enabled) "● 启用中" else "○ 已关闭"
             tunnelSwitch.setOnCheckedChangeListener { _, isChecked -> onToggle(t, isChecked) }
             btnEdit.setOnClickListener { onEdit(t) }
             btnDelete.setOnClickListener { onDelete(t) }

@@ -14,7 +14,7 @@ import com.cameramanager.app.data.model.Tunnel
 
 @Database(
     entities = [Device::class, DetectionRule::class, AlarmEvent::class, Recording::class, Tunnel::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +33,11 @@ abstract class AppDatabase : RoomDatabase() {
          *  - 新增 tunnels 表（内网穿透通道）。
          *  - devices 表追加内网穿透相关字段：lanSsid / tunnelId / publicHost /
          *    publicPort / publicOnvifPort。
+         *
+         * v2 -> v3：
+         *  - tunnels 表按 SakuraFrp 官方文档（公网入口模型）重写：
+         *    新增 token / authUser / authPass / lanCidr / lanGateway 字段。
+         *    host/port/onvifPort 三个字段保留为必填核心列（原来有）。
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -58,6 +63,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 只在 tunnels 已经存在的情况下 ALTER（老数据不会因此挂掉）
+                runCatching {
+                    db.execSQL("ALTER TABLE tunnels ADD COLUMN token TEXT")
+                    db.execSQL("ALTER TABLE tunnels ADD COLUMN authUser TEXT")
+                    db.execSQL("ALTER TABLE tunnels ADD COLUMN authPass TEXT")
+                    db.execSQL("ALTER TABLE tunnels ADD COLUMN lanCidr TEXT")
+                    db.execSQL("ALTER TABLE tunnels ADD COLUMN lanGateway TEXT")
+                }
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -65,7 +83,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "camera_manager.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }

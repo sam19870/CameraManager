@@ -12,7 +12,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
             android:background="@color/brand_primary" app:titleTextColor="@color/white"
-            app:navigationIcon="@drawable/ic_close" app:title="@string/tunnel_manage"/>
+            app:navigationIcon="@drawable/ic_back_white" app:title="@string/tunnel_manage"/>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:padding="12dp" android:background="@color/bg_card"

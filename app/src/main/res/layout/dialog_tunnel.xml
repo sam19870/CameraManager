@@ -1,57 +1,174 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 内网穿透通道编辑弹窗：完全按用户说的语义 + SakuraFrp 官方文档（https://doc.natfrp.com）
+     APP 不跑 frpc，路由器上已经跑好了。这里只填：
+       1) 公网入口 host/port（节点域名 + 面板分配的映射入口端口）
+       2) 认证（token / 账号 / 密码）
+       3) 内网网段信息（用于判断某台摄像头 IP 能不能通过这个通道进）
+     不填：local_ip / local_port / type / protocol 这些 frpc 内部配置（那是路由器上做的）
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="vertical" android:padding="20dp">
+    android:fillViewport="true">
 
-    <com.google.android.material.textfield.TextInputLayout
+    <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:hint="通道名称（如：阿里云frp）" android:layout_marginBottom="12dp">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editName" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="text"
-            android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        android:orientation="vertical" android:padding="20dp">
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:hint="公网入口地址（域名或 IP）" android:layout_marginBottom="12dp">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editHost" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="textUri"
-            android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        <!-- ===== 1. 通道基本信息 ===== -->
+        <TextView style="@style/SectionTitle" android:text="1. 通道名称"
+            android:layout_marginBottom="6dp"/>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:hint="RTSP 端口" android:layout_marginBottom="12dp">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editPort" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="number"
-            android:text="554" android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="通道名称（例：家里-老毛子-香港节点）"
+            android:layout_marginBottom="14dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editName" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:hint="ONVIF 端口（0 表示无）" android:layout_marginBottom="12dp">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editOnvifPort" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="number"
-            android:text="0" android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        <!-- ===== 2. 公网入口信息（SakuraFrp 官方需要的连接信息） ===== -->
+        <TextView style="@style/SectionTitle"
+            android:text="2. 公网入口（从 SakuraFrp 面板分配给路由器的连接信息，APP 就用这个作为内网入口）"
+            android:layout_marginBottom="6dp"/>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:hint="备注（可选）" android:layout_marginBottom="4dp">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editRemark" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="text"
-            android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="入口域名/IP（例：hk-bgp.natfrp.cloud）"
+            app:helperText="对应路由器 frpc.toml 中的 server_addr；APP 通过这个域名连接你家内网"
+            app:helperTextTextColor="@color/text_secondary"
+            android:layout_marginBottom="12dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editHost" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="textUri"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switchEnabled"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" android:textColor="@color/text_primary"
-        android:checked="true" android:text="启用此通道"/>
-</LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="入口端口（公网侧）"
+                app:helperText="SakuraFrp 面板分配给路由器内网 TCP 映射的端口"
+                app:helperTextTextColor="@color/text_secondary"
+                android:layout_marginEnd="6dp" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPort" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:text="554" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="ONVIF 入口端口（可选）"
+                app:helperText="如果单独开了一条映射 ONVIF，填它；否则留 0 表示与上面共用"
+                app:helperTextTextColor="@color/text_secondary"
+                android:layout_marginStart="6dp" android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editOnvifPort" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:text="0" android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <!-- ===== 3. 认证（可选，SakuraFrp / 自搭 frp 支持） ===== -->
+        <TextView style="@style/SectionTitle" android:text="3. 认证信息（没配置就留空）"
+            android:layout_marginTop="6dp" android:layout_marginBottom="6dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="访问密钥 Token（SakuraFrp 用户中心获取）"
+            app:counterEnabled="true" app:counterMaxLength="80"
+            app:helperText="路由器 frpc 里填了 token 才需要，否则可不填"
+            app:helperTextTextColor="@color/text_secondary"
+            android:layout_marginBottom="10dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editToken" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="用户名（可选）"
+                android:layout_marginEnd="6dp" android:layout_marginBottom="10dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editAuthUser" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="text"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="密码（可选）"
+                android:layout_marginStart="6dp" android:layout_marginBottom="10dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editAuthPass" android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text|textPassword"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <!-- ===== 4. 内网网段信息（让 App 知道哪些 IP 可以通过这个通道访问内网） ===== -->
+        <TextView style="@style/SectionTitle" android:text="4. 内网网段（路由匹配用，建议填）"
+            android:layout_marginTop="6dp" android:layout_marginBottom="6dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="内网网段 CIDR（例：192.168.1.0/24）"
+            app:helperText="填了之后，只要设备 IP 落在这个网段且当前不在该内网 WiFi，NetworkRouter 自动切换到此通道"
+            app:helperTextTextColor="@color/text_secondary"
+            android:layout_marginBottom="10dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editLanCidr" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="textUri"
+                android:text="192.168.1.0/24" android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="内网默认网关（可选，例：192.168.1.1）"
+            app:helperText="用于连通性探测，可不填"
+            app:helperTextTextColor="@color/text_secondary"
+            android:layout_marginBottom="10dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editLanGateway" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="textUri"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ===== 5. 其他 ===== -->
+        <TextView style="@style/SectionTitle" android:text="5. 其他"
+            android:layout_marginTop="6dp" android:layout_marginBottom="6dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="备注（可选）"
+            android:layout_marginBottom="6dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editRemark" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchEnabled"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:textColor="@color/text_primary"
+            android:checked="true" android:text="启用此通道（关闭后不参与自动匹配路由）"/>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="\n&#8226; APP 不需要运行 frpc 进程，路由器端已经跑好了；这里只填「公网入口信息」就可以。\n&#8226; 连通后，添加摄像头就和家里 WiFi 下一样，直接填 192.168.1.x 内网 IP 即可。系统会按 WiFi SSID 和 CIDR 自动选择：同内网 → 直连；不同内网 → 走此通道。\n&#8226; 参数可直接对照老毛子 Padavan / OpenWrt 后台的 frpc 配置：server_addr / remote_port / token。"
+            android:textColor="@color/text_tertiary"
+            android:textSize="11.5sp" android:lineSpacingExtra="2dp"/>
+    </LinearLayout>
+</ScrollView>

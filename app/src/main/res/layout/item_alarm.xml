@@ -1,31 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 告警列表项：TP-LINK / 乐橙官方 App 风格。
+     左：彩色告警图标 + 左侧色条
+     中：标题(类型+设备名) / 副标题(位置/动作) / 时间
+     右：缩略图 ImageView + 是否已读圆点 + "已处理" chip
+-->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="horizontal" android:padding="12dp"
-    android:background="@drawable/bg_card_rounded" android:layout_margin="6dp"
-    android:gravity="center_vertical">
+    app:cardBackgroundColor="@color/bg_card"
+    app:cardCornerRadius="12dp" app:cardElevation="0dp" app:strokeWidth="0dp"
+    android:layout_marginHorizontal="4dp" android:layout_marginVertical="5dp">
 
-    <View android:layout_width="6dp" android:layout_height="40dp"
-        android:background="@color/alarm_red" android:layout_marginEnd="12dp"/>
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:padding="12dp"
+        android:gravity="center_vertical">
 
-    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-        android:layout_weight="1" android:orientation="vertical">
-        <TextView android:id="@+id/alarmType"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="@color/text_primary" android:textSize="15sp"
-            android:textStyle="bold" android:text="人形告警"/>
-        <TextView android:id="@+id/alarmMsg"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="2dp" android:textColor="@color/text_secondary"
-            android:textSize="13sp" android:text="检测到人形活动"/>
-        <TextView android:id="@+id/alarmTime"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="2dp" android:textColor="@color/text_secondary"
-            android:textSize="12sp" android:text="08-13 14:30:00"/>
+        <!-- 左侧色条 + 图标 -->
+        <FrameLayout
+            android:layout_width="44dp" android:layout_height="44dp"
+            android:layout_marginEnd="12dp">
+            <View android:layout_width="3dp" android:layout_height="match_parent"
+                android:background="@color/alarm_red"
+                android:layout_gravity="start|center_vertical"/>
+            <ImageView android:id="@+id/alarmIcon"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:src="@drawable/ic_alarm"
+                android:padding="10dp"
+                app:tint="@color/white"
+                android:background="@drawable/bg_oval"
+                android:backgroundTint="@color/alarm_red"/>
+        </FrameLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/alarmType"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_primary" android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end"
+                    android:text="人形告警"/>
+                <!-- 未读红点（TP-LINK 同款）-->
+                <View android:id="@+id/alarmUnreadDot"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:background="@drawable/bg_oval"
+                    android:backgroundTint="@color/alarm_red"
+                    android:layout_marginStart="6dp"/>
+            </LinearLayout>
+
+            <TextView android:id="@+id/alarmDevice"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="2dp" android:textColor="@color/text_secondary"
+                android:textSize="12.5sp" android:maxLines="1" android:ellipsize="end"
+                android:text="客厅摄像头"/>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="3dp" android:gravity="center_vertical">
+                <ImageView android:layout_width="11dp" android:layout_height="11dp"
+                    android:src="@drawable/ic_alarm"
+                    app:tint="@color/text_tertiary"
+                    android:importantForAccessibility="no"/>
+                <TextView android:id="@+id/alarmTime"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11.5sp"
+                    android:text="08-13 14:30:00"/>
+                <TextView android:id="@+id/alarmChip"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:background="@drawable/bg_status_pill"
+                    android:paddingHorizontal="8dp" android:paddingVertical="2dp"
+                    android:textColor="@color/white"
+                    android:textSize="10.5sp"
+                    android:text="待处理"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 右侧缩略图（告警截图/录像预览，TP-LINK/乐橙同款都有）-->
+        <ImageView android:id="@+id/alarmThumb"
+            android:layout_width="58dp" android:layout_height="58dp"
+            android:layout_marginStart="10dp"
+            android:scaleType="centerCrop"
+            android:background="@drawable/bg_card_rounded"
+            android:contentDescription="告警缩略图"/>
     </LinearLayout>
-
-    <TextView android:id="@+id/alarmAck"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:padding="8dp" android:textColor="@color/brand_accent"
-        android:textSize="13sp" android:text="点击确认"/>
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

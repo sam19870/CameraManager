@@ -120,23 +120,56 @@ data class Device(
  *
  * 通道本身只描述「公网入口」，不区分底层是 frp 还是 ngrok —— 因为对 App
  * 来说，只要能拿到 host:port 就能直接 RTSP/ONVIF 连过去。
+ *
+ * 语义说明（请按用户家里的实际结构来理解）：
+ *   ┌───────────┐        公网         ┌──────────┐        内网          ┌───────────────┐
+ *   │ 手机 App  │  ───────────────→  │SakuraFrp │  ───────────────→   │ 家里摄像头    │
+ *   └───────────┘  host:remotePort   │ 节点入口  │  192.168.1.x/24      │ 192.168.1.108 │
+ *                                     └──────────┘                      └───────────────┘
+ *            ↑                                     ↑
+ *      APP 只要填这个入口信息             这个入口是用户在 natfrp.com 面板分配
+ *      = 路由器上 frpc.toml 里的:        给老毛子路由器的，路由器上 frpc
+ *      server_addr + remote_port         已经跑起来了，APP 不管理 frpc
+ *
+ * 这意味着：
+ *   - APP 不需要填写 local_ip / local_port / tunnelType 等 frpc 内部参数（那是路由器配置的）
+ *   - APP 只需要 SakuraFrp 公网入口：host（节点域名） + remotePort（公网端口） + 认证（token）
+ *   - 连通之后，APP 添加摄像头就可以像在同一 WiFi 下一样输入 192.168.1.x 内网 IP
+ *   - 当网络不是内网 WiFi 时，NetworkRouter 会把目标内网 IP 的连接路由到 host:remotePort
  */
 @Entity(tableName = "tunnels")
 data class Tunnel(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** 通道名称（用户自定义，不参与连接） */
     val name: String,
-    /** 公网/穿透入口 host（域名或 IP）。 */
+    /** 公网入口 host（节点域名或公网 IP），对应老毛子 frpc server_addr 和面板分配的 */
     val host: String,
-    /** 公网/穿透入口 RTSP 端口。 */
-    val port: Int = 554,
-    /** 公网/穿透入口 ONVIF 端口，0 表示无。 */
+    /** 公网入口 port（remotePort，SakuraFrp 面板分配给路由器映射内网的端口）。App 就是用这个 host:port 作为代理或直接转发进入家里内网。 */
+    val port: Int,
+    /** ONVIF 入口 port（如果 SakuraFrp 上单独映射了一条 ONVIF 到内网，填这里；0 表示不单独映射就用上面 port 也行）。 */
     val onvifPort: Int = 0,
-    /** 是否启用。关掉的通道不会被选用。 */
+
+    // ---- 认证（SakuraFrp/自搭 frp 支持，不一定全填） ----
+    /** SakuraFrp 访问密钥 token（如果你 frp 服务端开了 token 认证才填）。 */
+    val token: String? = null,
+    /** 用户名（极少数自搭 frp 用 token + user 双认证，多数留空）。 */
+    val authUser: String? = null,
+    /** 密码（同上，多数留空）。 */
+    val authPass: String? = null,
+
+    // ---- 内网网段信息 ----
+    /** 通道覆盖的内网网段 CIDR，例如 "192.168.1.0/24"、"10.0.0.0/8"。用于 NetworkRouter 自动匹配设备内网 IP。 */
+    val lanCidr: String? = null,
+    /** 内网默认网关 IP（可选填，例如 192.168.1.1，用于 NetworkRouter 做连通性探测）。 */
+    val lanGateway: String? = null,
+
+    /** 是否启用。关掉的通道不会被 NetworkRouter 选上。 */
     val enabled: Boolean = true,
-    /** 备注，例如 "frp 服务器 / 阿里云" 。 */
+    /** 备注，例如 "老毛子路由器 / 樱花日本节点 / RTSP入口" 。 */
     val remark: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
+
 
 /**
  * A detection rule for a device.

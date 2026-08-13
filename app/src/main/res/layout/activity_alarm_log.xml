@@ -1,15 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 告警记录页：完全参考 TP-LINK 物联 App / 乐橙 App 风格：
+     顶部 TabBar：全部 / 人形 / 移动 / 追踪 / 离线 → 对应 chip 切换
+     顶部日期筛选（可折叠）
+     空态页：中间大图 + "暂无告警，平安喜乐"
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="@color/bg_dark">
+    android:orientation="vertical" android:background="@color/bg_page">
 
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
         android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+        app:navigationIcon="@drawable/ic_back_white"/>
 
-    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
-        android:layout_width="match_parent" android:layout_height="match_parent"
-        android:padding="6dp"/>
+    <!-- 类型筛选 chip 行（TP-LINK/乐橙同款）-->
+    <HorizontalScrollView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:scrollbars="none" android:overScrollMode="never"
+        android:paddingHorizontal="10dp" android:paddingVertical="8dp"
+        android:background="@color/white">
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupFilter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            app:singleSelection="true" app:singleLine="true"
+            app:chipSpacingHorizontal="6dp"/>
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingHorizontal="10dp" android:paddingVertical="6dp"/>
+
+        <!-- 空态（TP-LINK 同款：居中大图 + 友好文案）-->
+        <LinearLayout android:id="@+id/emptyView"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="center"
+            android:visibility="gone">
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="88dp" android:layout_height="88dp"
+                app:cardCornerRadius="22dp" app:cardElevation="0dp" app:strokeWidth="0dp"
+                app:cardBackgroundColor="#1A0EA5E9">
+                <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:src="@drawable/ic_alarm" android:padding="22dp"
+                    app:tint="@color/brand_primary"/>
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="暂无告警，平安喜乐"
+                android:layout_marginTop="14dp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold" android:textSize="15sp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="检测到告警后会在这里按时间倒序显示"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"/>
+        </LinearLayout>
+    </FrameLayout>
 </LinearLayout>
