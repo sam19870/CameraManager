@@ -30,6 +30,8 @@ class Repository(private val db: AppDatabase) {
     // ---- Detection rules ----
     fun observeRules(deviceId: Long): Flow<List<DetectionRule>> =
         db.detectionRuleDao().observeForDevice(deviceId)
+    suspend fun getActiveForDevice(deviceId: Long): List<DetectionRule> =
+        db.detectionRuleDao().getActiveForDevice(deviceId)
     suspend fun getRule(id: Long): DetectionRule? = db.detectionRuleDao().getById(id)
     suspend fun saveRule(rule: DetectionRule): Long = db.detectionRuleDao().insert(rule)
     suspend fun updateRule(rule: DetectionRule) = db.detectionRuleDao().update(rule)

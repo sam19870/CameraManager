@@ -170,9 +170,9 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun routeLabel(route: RouteResult): String {
         val tag = when (route.type) {
-            RouteResult.RouteType.LAN -> "内网"
-            RouteResult.RouteType.TUNNEL -> "穿透"
-            RouteResult.RouteType.PUBLIC -> "公网"
+            NetworkRouter.RouteType.LAN -> "内网"
+            NetworkRouter.RouteType.TUNNEL -> "穿透"
+            NetworkRouter.RouteType.PUBLIC -> "公网"
         }
         val suffix = if (!route.reachable) " · 不可达" else ""
         return "$tag·${route.label.substringAfter('·', route.label)}$suffix"

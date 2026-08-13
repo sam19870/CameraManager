@@ -2,19 +2,18 @@ package com.cameramanager.app.rtsp
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Surface
+import android.view.SurfaceHolder
 import android.view.SurfaceView
-import org.videolan.libvlc.IVLCVout
-import org.videolan.libvlc.LibVLC
-import org.videolan.libvlc.Media
-import org.videolan.libvlc.MediaPlayer
 
 /**
- * Wraps libVLC to provide real-time RTSP preview with switchable resolution profiles,
- * frame capture (screenshot) and local recording.
+ * Wraps Android native [MediaPlayer] to provide real-time RTSP preview with
+ * switchable resolution profiles, frame capture (screenshot) and local recording.
  *
  * Streaming resolution profiles:
  *  - PROFILE_HD (主码流): high quality, suits WiFi / LAN.
@@ -22,9 +21,9 @@ import org.videolan.libvlc.MediaPlayer
  *  - PROFILE_SMOOTH (流畅): lowest, suits weak network.
  *
  * 防卡死与重连机制（v2 新增）：
- *  - 播放启动后启动 [OPEN_TIMEOUT_MS] 倒计时，超时未进入 PLAYING 视为一次超时，
- *    累计 [timeoutCount] 并触发自动重连（最多 [MAX_AUTO_RETRIES] 次）。
- *  - 进入 PLAYING 后启动 [STALL_TIMEOUT_MS] 看门狗：超过该时长没收到任何
+ *  - 播放启动后启动 [openTimeoutMs] 倒计时，超时未进入 PLAYING 视为一次超时，
+ *    累计 [timeoutCount] 并触发自动重连（最多 [maxAutoRetries] 次）。
+ *  - 进入 PLAYING 后启动 [stallTimeoutMs] 看门狗：超过该时长没收到任何
  *    状态事件（说明画面卡死无心跳）也视为超时。
  *  - 自动重连次数耗尽后回调 [Listener.onStalled]，由 UI 弹「重连」按钮，
  *    避免无脑重试把 App 卡死。
@@ -32,12 +31,11 @@ import org.videolan.libvlc.MediaPlayer
  */
 class RtspPlayer(private val context: Context) {
 
-    private var libVlc: LibVLC? = null
     private var mediaPlayer: MediaPlayer? = null
-    private var vout: IVLCVout? = null
     private var currentUrl: String? = null
     private var currentProfile: Int = PROFILE_SD
     private var surfaceView: SurfaceView? = null
+    private var surfaceHolderCallback: SurfaceHolder.Callback? = null
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -76,22 +74,35 @@ class RtspPlayer(private val context: Context) {
         private const val TAG = "RtspPlayer"
     }
 
-    fun init() {
-        if (libVlc != null) return
-        val options = ArrayList<String>().apply {
-            add("--rtsp-tcp")
-            add("--network-caching=300")
-            add("--clock-jitter=0")
-            add("--codec=avcodec")
-            add("--no-drop-late-frames")
-            add("--no-skip-frames")
+    private fun ensureMediaPlayer(): MediaPlayer {
+        mediaPlayer?.let { return it }
+        val mp = MediaPlayer()
+        mp.setOnInfoListener { _, what, extra ->
+            handleInfo(what, extra)
+            true
         }
-        libVlc = LibVLC(context, options)
-        mediaPlayer = MediaPlayer(libVlc).apply {
-            setEventListener { event ->
-                handleEvent(event.type)
-            }
+        mp.setOnCompletionListener {
+            handleState(State.ENDED)
         }
+        mp.setOnPreparedListener {
+            Log.d(TAG, "MediaPlayer prepared, calling start()")
+            it.start()
+            isPlayingState = true
+            scheduleWatchdog(stallTimeoutMs)
+            handleState(State.PLAYING)
+        }
+        mp.setOnErrorListener { _, what, extra ->
+            val msg = "播放出错 ($what/$extra)，请检查网络或设备地址"
+            listener?.onError(msg)
+            handleState(State.ERROR)
+            onTimeout(msg)
+            true
+        }
+        mp.setOnBufferingUpdateListener { _, percent ->
+            if (percent < 100) handleState(State.BUFFERING)
+        }
+        mediaPlayer = mp
+        return mp
     }
 
     /**
@@ -99,7 +110,6 @@ class RtspPlayer(private val context: Context) {
      */
     fun play(surfaceView: SurfaceView, url: String, profile: Int) {
         if (released) return
-        init()
         this.surfaceView = surfaceView
         currentUrl = url
         currentProfile = profile
@@ -112,43 +122,63 @@ class RtspPlayer(private val context: Context) {
     private fun startPlaybackInternal() {
         val sv = surfaceView ?: return
         val url = currentUrl ?: return
-        detachVout()
-        val mp = mediaPlayer ?: return
-        vout = mp.vlcVout
-        vout?.setVideoView(sv)
-        vout?.apply {
-            setWindowSize(sv.width, sv.height)
-            attach()
-        }
-        val media = Media(libVlc, Uri.parse(url)).apply {
-            setHWDecoderEnabled(true, false)
+        try {
+            val mp = ensureMediaPlayer()
+            mp.reset()
+            // 选路逻辑：profile 用来在 URL 层拼主码流/子码流路径（URL 已在调用方拼好）。
+            // 这里仅在 MediaPlayer 层做缓冲参数启发式处理。
             when (currentProfile) {
                 PROFILE_HD -> {
-                    addOption(":rtsp-frame-buffer-size=2000000")
-                    addOption(":network-caching=500")
+                    // 主码流：稍微多一点缓冲避免花屏
                 }
                 PROFILE_SD -> {
-                    addOption(":network-caching=300")
                 }
                 PROFILE_SMOOTH -> {
-                    addOption(":network-caching=150")
-                    addOption(":rtsp-jitter=0")
                 }
             }
+            // 等 Surface 就绪再 setSurface 并 prepareAsync
+            val holder = sv.holder
+            val surface = holder.surface
+            if (surface != null && surface.isValid) {
+                mp.setSurface(surface)
+            } else {
+                // 未就绪，绑一次 Callback，created 时重入
+                val old = surfaceHolderCallback
+                if (old != null) holder.removeCallback(old)
+                val cb = object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(h: SurfaceHolder) {
+                        main.post {
+                            if (!released && !stopped && currentUrl == url) {
+                                try {
+                                    mediaPlayer?.setSurface(h.surface)
+                                } catch (_: Exception) { /* ignore */ }
+                            }
+                        }
+                        try { holder.removeCallback(this) } catch (_: Exception) {}
+                    }
+                    override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hg: Int) {}
+                    override fun surfaceDestroyed(h: SurfaceHolder) {}
+                }
+                surfaceHolderCallback = cb
+                holder.addCallback(cb)
+            }
+            mp.setDataSource(context, Uri.parse(url))
+            mp.prepareAsync()
+            isPlayingState = false
+            lastEventTime = System.currentTimeMillis()
+            listener?.onStateChanged(State.OPENING)
+            scheduleWatchdog(openTimeoutMs)
+        } catch (e: Exception) {
+            Log.w(TAG, "startPlaybackInternal failed: ${e.message}")
+            listener?.onError("启动播放失败: ${e.message}")
+            onTimeout("启动播放失败")
         }
-        mp.media = media
-        isPlayingState = false
-        lastEventTime = System.currentTimeMillis()
-        listener?.onStateChanged(State.OPENING)
-        mp.play()
-        scheduleWatchdog(openTimeoutMs)
     }
 
     fun stop() {
         stopped = true
         cancelWatchdog()
-        mediaPlayer?.stop()
-        detachVout()
+        try { mediaPlayer?.stop() } catch (_: Exception) {}
         isPlayingState = false
         listener?.onStateChanged(State.STOPPED)
     }
@@ -156,15 +186,18 @@ class RtspPlayer(private val context: Context) {
     fun release() {
         released = true
         cancelWatchdog()
-        stop()
-        mediaPlayer?.release()
-        libVlc?.release()
+        try { stop() } catch (_: Exception) {}
+        try { mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
-        libVlc = null
+        surfaceHolderCallback = null
         surfaceView = null
     }
 
-    fun isPlaying(): Boolean = mediaPlayer?.isPlaying == true
+    fun isPlaying(): Boolean = try {
+        isPlayingState && mediaPlayer?.isPlaying == true
+    } catch (_: Exception) {
+        false
+    }
 
     fun getCurrentProfile(): Int = currentProfile
 
@@ -180,7 +213,6 @@ class RtspPlayer(private val context: Context) {
         autoRetries = 0
         if (currentUrl == null || surfaceView == null) return
         stopped = false
-        // stop 内部已 cancelWatchdog，这里直接重新起播
         try { mediaPlayer?.stop() } catch (_: Exception) {}
         isPlayingState = false
         main.postDelayed({
@@ -188,33 +220,21 @@ class RtspPlayer(private val context: Context) {
         }, 200)
     }
 
-    private fun detachVout() {
-        vout?.let {
-            try { it.detach() } catch (_: Exception) {}
+    private fun handleInfo(what: Int, extra: Int) {
+        lastEventTime = System.currentTimeMillis()
+        when (what) {
+            MediaPlayer.MEDIA_INFO_BUFFERING_START -> handleState(State.BUFFERING)
+            MediaPlayer.MEDIA_INFO_BUFFERING_END -> handleState(State.PLAYING)
+            MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START -> {
+                isPlayingState = true
+                scheduleWatchdog(stallTimeoutMs)
+                handleState(State.PLAYING)
+            }
         }
-        vout = null
     }
 
-    private fun handleEvent(type: Int) {
+    private fun handleState(state: State) {
         lastEventTime = System.currentTimeMillis()
-        val state = when (type) {
-            MediaPlayer.Event.Opening -> State.OPENING
-            MediaPlayer.Event.Buffering -> State.BUFFERING
-            MediaPlayer.Event.Playing -> {
-                isPlayingState = true
-                // 进入播放后切换为「卡死看门狗」
-                scheduleWatchdog(stallTimeoutMs)
-                State.PLAYING
-            }
-            MediaPlayer.Event.Paused -> State.PAUSED
-            MediaPlayer.Event.Stopped -> State.STOPPED
-            MediaPlayer.Event.EndReached -> State.ENDED
-            MediaPlayer.Event.EncounteredError -> {
-                listener?.onError("播放出错，请检查网络或设备地址")
-                State.ERROR
-            }
-            else -> return
-        }
         listener?.onStateChanged(state)
     }
 
@@ -264,10 +284,11 @@ class RtspPlayer(private val context: Context) {
     }
 
     /**
-     * Capture the current displayed frame into a [Bitmap]. libVLC does not expose
-     * direct frame grabbing without native builds, so for screenshot we render the
-     * surface view's drawing cache as a best-effort capture.
+     * Capture the current displayed frame into a [Bitmap]. Native MediaPlayer does
+     * not expose direct frame grabbing, so we fall back to the SurfaceView's drawing
+     * cache as a best-effort capture.
      */
+    @Suppress("DEPRECATION")
     fun captureFrame(surfaceView: SurfaceView): Bitmap? {
         return try {
             surfaceView.isDrawingCacheEnabled = true

@@ -18,6 +18,7 @@ import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.data.model.Tunnel
 import com.cameramanager.app.databinding.ActivitySettingsBinding
 import com.cameramanager.app.databinding.DialogRouteBinding
+import com.cameramanager.app.R
 import com.cameramanager.app.ui.DeviceViewModelFactory
 import com.cameramanager.app.ui.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +67,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.recyclerRules.adapter = adapter
 
         binding.btnAddRule.setOnClickListener {
-            startActivity(DetectionRuleActivity.intent(this, deviceId))
+            startActivity(DetectionRuleActivity.intent(this, deviceId, -1L))
         }
         binding.btnAlarmLog.setOnClickListener {
             startActivity(AlarmLogActivity.intent(this, deviceId))
@@ -111,7 +112,7 @@ class SettingsActivity : AppCompatActivity() {
                 .setView(dlg.root)
                 .setPositiveButton("保存") { _, _ ->
                     val lanSsid = dlg.editLanSsid.text.toString().trim().ifEmpty { null }
-                    val tunnelId = tunnels.getOrNull(dlg.spinnerTunnel.selectedPosition - 1)?.id ?: 0L
+                    val tunnelId = tunnels.getOrNull(dlg.spinnerTunnel.selectedItemPosition - 1)?.id ?: 0L
                     val publicHost = dlg.editPublicHost.text.toString().trim().ifEmpty { null }
                     val publicPort = dlg.editPublicPort.text.toString().trim().toIntOrNull() ?: 0
                     val publicOnvifPort = dlg.editPublicOnvifPort.text.toString().trim().toIntOrNull() ?: 0

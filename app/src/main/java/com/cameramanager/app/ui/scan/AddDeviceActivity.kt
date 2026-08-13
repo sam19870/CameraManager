@@ -132,7 +132,7 @@ class AddDeviceActivity : AppCompatActivity() {
             },
             // 路由 / 内网穿透（均可选）
             lanSsid = binding.editLanSsid.text.toString().trim().ifEmpty { null },
-            tunnelId = tunnels.getOrNull(binding.spinnerTunnel.selectedPosition - 1)?.id ?: 0L,
+            tunnelId = tunnels.getOrNull(binding.spinnerTunnel.selectedItemPosition - 1)?.id ?: 0L,
             publicHost = binding.editPublicHost.text.toString().trim().ifEmpty { null },
             publicPort = binding.editPublicPort.text.toString().trim().toIntOrNull() ?: 0,
             publicOnvifPort = binding.editPublicOnvifPort.text.toString().trim().toIntOrNull() ?: 0

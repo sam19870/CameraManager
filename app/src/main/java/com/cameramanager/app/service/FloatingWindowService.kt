@@ -101,7 +101,7 @@ class FloatingWindowService : Service() {
         }
 
         // Start streaming
-        player = RtspPlayer(this).apply { init() }
+        player = RtspPlayer(this)
         surface.holder.addCallback(object : android.view.SurfaceHolder.Callback {
             override fun surfaceCreated(holder: android.view.SurfaceHolder) {
                 player?.play(surface, url, RtspPlayer.PROFILE_SD)

@@ -76,7 +76,7 @@ class MotionDetectionService : Service() {
                     delay(POLL_INTERVAL_IDLE)
                     continue
                 }
-                rules.forEach { rule -> runDetection(device, rule) }
+                for (rule in rules) runDetection(device, rule)
                 delay(POLL_INTERVAL)
             }
         }

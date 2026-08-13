@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.databinding.ActivityDeviceManageBinding
+import com.cameramanager.app.vendor.CameraCapabilities
 import com.cameramanager.app.vendor.CameraController
 import com.cameramanager.app.vendor.CameraVendorApi
 import kotlinx.coroutines.Dispatchers
@@ -48,13 +49,13 @@ class DeviceManageActivity : AppCompatActivity() {
 
         binding.recordContinuous.setOnClickListener {
             exec { it.setRecordingMode("continuous") }
-            binding.recordContinuous.isChecked = true
-            binding.recordMotion.isChecked = false
+            binding.recordContinuous.isSelected = true
+            binding.recordMotion.isSelected = false
         }
         binding.recordMotion.setOnClickListener {
             exec { it.setRecordingMode("motion") }
-            binding.recordMotion.isChecked = true
-            binding.recordContinuous.isChecked = false
+            binding.recordMotion.isSelected = true
+            binding.recordContinuous.isSelected = false
         }
     }
 
@@ -71,7 +72,7 @@ class DeviceManageActivity : AppCompatActivity() {
             if (caps?.tfStorage == true) View.VISIBLE else View.GONE
     }
 
-    private fun capabilitiesText(caps: CameraVendorApi.CameraCapabilities?): String {
+    private fun capabilitiesText(caps: CameraCapabilities?): String {
         caps ?: return "正在查询设备能力…"
         val lines = mutableListOf<String>()
         if (caps.ptz) lines += "云台控制"

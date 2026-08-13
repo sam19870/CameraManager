@@ -50,7 +50,9 @@ data class Device(
     val nightVision: Int = 0,
     /** Privacy masking enabled. */
     val privacyMask: Boolean = false,
-    createdAt: Long = System.currentTimeMillis(),
+    /** Epoch millis, used for display ordering (oldest first). */
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Transient last-known-online flag, kept so Room uses the same primary constructor. */
     val online: Boolean = false,
     /** 设备所在内网 WiFi SSID（路由判断依据），空表示不绑定。 */
     val lanSsid: String? = null,

@@ -77,17 +77,21 @@ object NetworkRouter {
     }
 
     /** 是否当前正连着 WiFi（不论 SSID）。 */
-    fun isOnWifi(context: Context): Boolean = try {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val active = cm.activeNetwork ?: return false
-            val caps = cm.getNetworkCapabilities(active) ?: return false
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-        } else {
-            @Suppress("DEPRECATION")
-            cm.activeNetworkInfo?.type == ConnectivityManager.TYPE_WIFI
+    fun isOnWifi(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val active = cm.activeNetwork ?: return false
+                val caps = cm.getNetworkCapabilities(active) ?: return false
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            } else {
+                @Suppress("DEPRECATION")
+                cm.activeNetworkInfo?.type == ConnectivityManager.TYPE_WIFI
+            }
+        } catch (_: Exception) {
+            false
         }
-    } catch (_: Exception) { false }
+    }
 
     /**
      * 为设备选路。挂起函数：LAN 时会做一次 TCP 可达性探测（端口通即视为内网可达）。

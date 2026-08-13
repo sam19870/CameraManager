@@ -35,8 +35,9 @@ class TimelineView @JvmOverloads constructor(
     }
     private val rect = RectF()
 
-    var onSegmentClickListener: ((Int) -> Unit)? = null
+    private var onSegmentClickListener: ((Int) -> Unit)? = null
 
+    @JvmName("setOnSegmentClickListener_")
     fun setOnSegmentClickListener(l: (Int) -> Unit) { onSegmentClickListener = l }
 
     fun setSegments(items: List<Pair<Long, Long>>) {

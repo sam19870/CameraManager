@@ -82,8 +82,8 @@ class VoiceIntercom(
             }
             running = true
             audioTrack?.play()
-            uplinkJob = scope.launch { uplinkLoop() }
-            downlinkJob = scope.launch { downlinkLoop() }
+            uplinkJob = scope.launch { uplinkLoop(this@launch) }
+            downlinkJob = scope.launch { downlinkLoop(this@launch) }
             return true
         } catch (e: Exception) {
             Log.w(TAG, "start failed: ${e.message}")
@@ -93,12 +93,12 @@ class VoiceIntercom(
     }
 
     /** Uplink: capture mic PCM and send to camera. */
-    private fun uplinkLoop() {
+    private suspend fun uplinkLoop(cs: CoroutineScope) {
         val bufSize = 640
         val buffer = ByteArray(bufSize)
         val ar = audioRecord ?: return
         ar.startRecording()
-        while (running && isActive) {
+        while (running && cs.isActive) {
             val read = ar.read(buffer, 0, bufSize)
             if (read > 0) {
                 reportLevel(buffer, read)
@@ -116,10 +116,10 @@ class VoiceIntercom(
     }
 
     /** Downlink: receive audio from camera and play through speaker. */
-    private fun downlinkLoop() {
+    private suspend fun downlinkLoop(cs: CoroutineScope) {
         val buffer = ByteArray(640)
         val at = audioTrack ?: return
-        while (running && isActive) {
+        while (running && cs.isActive) {
             try {
                 when (transport) {
                     Transport.TCP -> {

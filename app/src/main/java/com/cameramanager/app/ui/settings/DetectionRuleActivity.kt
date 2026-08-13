@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.cameramanager.app.CameraApp
+import kotlinx.coroutines.launch
 import com.cameramanager.app.data.model.DetectionRule
 import com.cameramanager.app.databinding.ActivityDetectionRuleBinding
 import com.cameramanager.app.ui.DeviceViewModelFactory
@@ -43,8 +45,8 @@ class DetectionRuleActivity : AppCompatActivity() {
             rule = DetectionRule(deviceId = deviceId)
             return
         }
-        androidx.lifecycle.lifecycleScope.launch {
-            rule = com.cameramanager.app.CameraApp.get().repository.getRule(ruleId)
+        lifecycleScope.launch {
+            rule = CameraApp.get().repository.getRule(ruleId)
             rule?.let { populate(it) }
         }
     }

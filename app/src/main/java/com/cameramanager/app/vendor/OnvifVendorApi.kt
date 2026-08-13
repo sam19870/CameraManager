@@ -101,7 +101,7 @@ object OnvifVendorApi : CameraVendorApi {
     override suspend fun setRecordingMode(device: Device, mode: String) =
         ApiResult.Unsupported("录像模式设置")
 
-    override suspend fun queryTfRecordings(device: Device, dayStart: Long) =
+    override suspend fun queryTfRecordings(device: Device, dayStart: Long): ApiResult<List<Pair<Long, Long>>> =
         ApiResult.Success(emptyList())
 
     override suspend fun downloadRecording(device: Device, start: Long, duration: Long, destPath: String) =

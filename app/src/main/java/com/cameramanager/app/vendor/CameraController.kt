@@ -87,8 +87,15 @@ class CameraController(private val device: Device) {
         guard(CameraCapabilities::privacyMask) { api.setPrivacyMask(device, enabled, regions) }
 
     // ---- Voice ----
-    suspend fun startVoice(): CameraCommandResult =
-        guard(CameraCapabilities::voiceIntercom) { api.startVoiceCall(device) }
+    suspend fun startVoice(): CameraCommandResult {
+        val caps = _capabilities.value ?: refreshCapabilities()
+        if (caps?.voiceIntercom != true) return CameraCommandResult.Unsupported("语音对讲")
+        return when (val r = api.startVoiceCall(device)) {
+            is ApiResult.Success -> CameraCommandResult.OkWithMessage(r.data)
+            is ApiResult.Unsupported -> CameraCommandResult.Unsupported("语音对讲")
+            is ApiResult.Error -> CameraCommandResult.Failed(r.message)
+        }
+    }
 
     suspend fun endVoice(): CameraCommandResult =
         guard(CameraCapabilities::voiceIntercom) { api.endVoiceCall(device) }
@@ -156,16 +163,16 @@ class CameraController(private val device: Device) {
         }
     }
 
-    private suspend inline fun guard(
+    private suspend fun guard(
         selector: (CameraCapabilities) -> Boolean,
-        crossinline block: suspend () -> ApiResult<Unit>
+        block: suspend () -> ApiResult<Unit>
     ): CameraCommandResult {
         val caps = _capabilities.value ?: refreshCapabilities()
         if (caps?.let(selector) != true) {
             return CameraCommandResult.Unsupported(featureLabel(selector))
         }
         return when (val r = block()) {
-            is ApiResult.Success -> CameraCommandResult.Ok()
+            is ApiResult.Success -> CameraCommandResult.Ok
             is ApiResult.Unsupported -> CameraCommandResult.Unsupported(featureLabel(selector))
             is ApiResult.Error -> CameraCommandResult.Failed(r.message)
         }
