@@ -71,7 +71,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.preview.PreviewActivity" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".ui.preview.PreviewActivity" android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.CameraManager.Preview"/>
         <activity android:name=".ui.scan.DeviceScanActivity" />
         <activity android:name=".ui.scan.AddDeviceActivity" />
         <activity android:name=".ui.playback.PlaybackActivity" />

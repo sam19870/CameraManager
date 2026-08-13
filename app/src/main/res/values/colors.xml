@@ -1,23 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#1677FF</color>
-    <color name="brand_primary_dark">#0E5FD9</color>
-    <color name="brand_accent">#FF7A00</color>
-    <color name="bg_dark">#0B0E13</color>
-    <color name="bg_card">#171B22</color>
-    <color name="bg_card_2">#1F242C</color>
-    <color name="surface">#12161D</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#8892A6</color>
-    <color name="text_tertiary">#5C6678</color>
+    <!-- ============== TP-Link Tapo 风格配色（浅色主题） ============== -->
+
+    <!-- 品牌主色：Tapo 蓝 -->
+    <color name="brand_primary">#00A6FF</color>
+    <color name="brand_primary_dark">#008AD6</color>
+    <color name="brand_primary_soft">#E6F5FF</color>
+
+    <!-- 品牌辅色：Tapo 青绿（高亮） -->
+    <color name="brand_accent">#00C48C</color>
+    <color name="brand_accent_soft">#E6FAF4</color>
+
+    <!-- 警示色 -->
     <color name="online_green">#00C48C</color>
-    <color name="offline_gray">#7A8293</color>
-    <color name="alarm_red">#F31260</color>
-    <color name="ptz_btn">#242A34</color>
-    <color name="divider">#1A2A3A55</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="black">#FF000000</color>
-    <color name="chip_bg">#2A2F38</color>
-    <color name="ptz_center">#2C3442</color>
-    <color name="text_disabled">#4A5264</color>
+    <color name="offline_gray">#A0A7B1</color>
+    <color name="warning_orange">#FF7A00</color>
+    <color name="error_red">#FF4D4F</color>
+
+    <!-- 背景：浅色主题 -->
+    <color name="bg_page">#F5F7FA</color>       <!-- 页面底色（浅灰白） -->
+    <color name="bg_card">#FFFFFF</color>       <!-- 卡片白色 -->
+    <color name="bg_card_2">#EFF3F8</color>     <!-- 次级卡片灰 -->
+    <color name="bg_dark">#1E222B</color>       <!-- 仍保留深色（预览页用） -->
+
+    <!-- 分割线 -->
+    <color name="divider">#E6E9EF</color>
+
+    <!-- 文字颜色 -->
+    <color name="text_primary">#1E222B</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_tertiary">#A0A7B1</color>
+    <color name="text_hint">#B8BFCC</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#1E222B</color>
+
+    <!-- 输入框 -->
+    <color name="input_bg">#F5F7FA</color>
+
+    <!-- 按钮禁用 -->
+    <color name="btn_disabled">#C9CED6</color>
+
+    <!-- ============ 旧命名别名（兼容现有引用） ============ -->
+    <color name="alarm_red">@color/error_red</color>
+    <color name="surface">@color/bg_card</color>
+    <color name="ptz_btn">#2C3140</color>
+    <color name="ptz_btn_pressed">@color/brand_primary</color>
+    <color name="ptz_center">@color/brand_primary</color>
 </resources>

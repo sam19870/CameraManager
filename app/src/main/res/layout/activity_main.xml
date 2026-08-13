@@ -2,60 +2,96 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/bg_page">
 
+    <!-- ============ 顶部 Toolbar（Tapo 蓝） ============ -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:background="@color/brand_primary">
+        android:background="@color/brand_primary"
+        app:elevation="0dp">
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name" app:titleTextColor="@color/white"/>
+            app:title="@string/app_name"
+            app:titleTextColor="@color/white"
+            app:popupTheme="@style/ThemeOverlay.MaterialComponents.Light"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe"
+    <!-- ============ 设备列表 ============ -->
+    <FrameLayout
         android:layout_width="match_parent" android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:layout_marginBottom="56dp">
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler"
-            android:layout_width="match_parent" android:layout_height="match_parent"
-            android:clipToPadding="false" android:padding="8dp"/>
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <TextView android:id="@+id/emptyState"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="@string/empty_devices"
-        android:textColor="@color/text_secondary"
-        android:gravity="center" android:visibility="gone"/>
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe"
+            android:layout_width="match_parent" android:layout_height="match_parent">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="10dp" android:paddingEnd="10dp"
+                android:paddingTop="8dp" android:paddingBottom="88dp"/>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_multi"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp" android:layout_marginBottom="88dp"
-        android:src="@drawable/ic_grid"
-        app:backgroundTint="@color/bg_card" app:tint="@color/white"
-        app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"/>
+        <!-- 空状态 -->
+        <LinearLayout android:id="@+id/emptyState"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:orientation="vertical"
+            android:gravity="center" android:visibility="gone"
+            android:paddingHorizontal="32dp">
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="72dp" android:layout_height="72dp"
+                app:cardCornerRadius="20dp" app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/brand_primary_soft">
+                <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:src="@drawable/ic_camera" android:padding="18dp"
+                    app:tint="@color/brand_primary"/>
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="还没有添加摄像头"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" android:textStyle="bold"
+                android:layout_marginTop="18dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="点击右下角蓝色加号按钮即可添加"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" android:layout_marginTop="6dp"
+                android:gravity="center"/>
+        </LinearLayout>
+    </FrameLayout>
 
+    <!-- ============ 单个 蓝+白 FAB（右下角） ============ -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end" android:layout_margin="16dp"
-        android:layout_marginBottom="72dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:layout_marginBottom="80dp"
+        android:contentDescription="添加摄像头"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/brand_accent" app:tint="@color/black"
+        app:backgroundTint="@color/brand_primary"
+        app:tint="@color/white"
+        app:fabSize="normal"
+        app:maxImageSize="24dp"
+        app:borderWidth="0dp"
+        app:elevation="6dp"
+        app:pressedTranslationZ="8dp"
         app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"/>
 
+    <!-- ============ 底部导航（白色，Tapo 风格） ============ -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent" android:layout_height="56dp"
         android:layout_gravity="bottom"
-        android:background="@color/bg_card"
+        android:background="@color/white"
+        app:elevation="8dp"
         app:itemIconTint="@color/bottom_nav_color"
         app:itemTextColor="@color/bottom_nav_color"
+        app:itemRippleColor="@color/brand_primary_soft"
         app:labelVisibilityMode="labeled"
+        app:itemHorizontalTranslationEnabled="false"
         app:menu="@menu/bottom_nav_menu"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,32 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.CameraManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <!-- ========= TP-Link Tapo 风格 浅色主题（默认） ========= -->
+    <style name="Theme.CameraManager" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/brand_accent</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSurface">@color/bg_card</item>
         <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorError">@color/alarm_red</item>
+        <item name="colorError">@color/error_red</item>
+        <item name="android:colorBackground">@color/bg_page</item>
+        <item name="android:windowBackground">@color/bg_page</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/brand_primary</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:navigationBarColor" tools:targetApi="21">@color/white</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogLight</item>
+    </style>
+
+    <!-- 视频预览页专用（深色沉浸） -->
+    <style name="Theme.CameraManager.Preview" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSurface">@color/bg_dark</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="colorError">@color/error_red</item>
         <item name="android:colorBackground">@color/bg_dark</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
-        <item name="android:navigationBarColor" tools:targetApi="21">@color/bg_dark</item>
-        <item name="materialAlertDialogTheme">@style/AlertDialogDark</item>
+        <item name="android:navigationBarColor" tools:targetApi="21">@android:color/black</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogLight</item>
+        <item name="android:windowFullscreen">true</item>
     </style>
 
-    <style name="AlertDialogDark" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+    <style name="AlertDialogLight" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <item name="android:background">@color/bg_card</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="colorSurface">@color/bg_card</item>
     </style>
 
-    <style name="CardDark">
-        <item name="android:background">@color/bg_card</item>
-        <item name="android:padding">12dp</item>
+    <!-- 兼容旧引用（现在用的Light版本） -->
+    <style name="AlertDialogDark" parent="AlertDialogLight"/>
+
+    <!-- 分组标题 -->
+    <style name="SectionTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingBottom">6dp</item>
+    </style>
+
+    <!-- 卡片内分隔线 -->
+    <style name="DividerLine">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">0.5dp</item>
+        <item name="android:background">@color/divider</item>
+        <item name="android:layout_marginStart">54dp</item>
     </style>
 
     <!-- PTZ 方向按钮（单独使用时） -->
@@ -52,25 +91,6 @@
         <item name="iconTint">@color/white</item>
         <item name="backgroundTint">@android:color/transparent</item>
         <item name="android:layout_marginHorizontal">2dp</item>
-    </style>
-
-    <!-- 分组标题 -->
-    <style name="SectionTitle">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">13sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:paddingStart">4dp</item>
-        <item name="android:paddingBottom">6dp</item>
-    </style>
-
-    <!-- 卡片内分隔线 -->
-    <style name="DividerLine">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">0.5dp</item>
-        <item name="android:background">@color/divider</item>
-        <item name="android:layout_marginStart">54dp</item>
     </style>
 
     <!-- 通用操作按钮（扁平胶囊型） -->

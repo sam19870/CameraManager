@@ -14,7 +14,7 @@ import com.cameramanager.app.service.AlarmNotifier
 import com.cameramanager.app.service.MotionDetectionService
 import com.cameramanager.app.ui.playback.PlaybackActivity
 import com.cameramanager.app.ui.preview.PreviewActivity
-import com.cameramanager.app.ui.scan.DeviceScanActivity
+import com.cameramanager.app.ui.scan.AddDeviceActivity
 import com.cameramanager.app.ui.settings.AlarmLogActivity
 import com.cameramanager.app.ui.settings.AppSettingsActivity
 import com.cameramanager.app.ui.settings.SettingsActivity
@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Home screen with bottom navigation: 首页(devices), 回放, 消息, 设置.
- * Tap a device to open the real-time preview; long-press for management actions.
+ * 首页 - 底部导航：首页/回放/消息/设置
+ * 右下角蓝色 FAB：点击进入添加摄像头页（IP+账号+密码+端口80，自动探测协议）
  */
 class MainActivity : AppCompatActivity() {
 
@@ -47,22 +47,19 @@ class MainActivity : AppCompatActivity() {
         binding.recycler.layoutManager = GridLayoutManager(this, 2)
         binding.recycler.adapter = adapter
 
+        // 右下角 FAB → 直接进添加设备页（小白友好：只用填IP/账号/密码/端口80）
         binding.fabAdd.setOnClickListener {
-            startActivity(Intent(this, DeviceScanActivity::class.java))
-        }
-        binding.fabMulti.setOnClickListener {
-            startActivity(Intent(this, MultiPreviewActivity::class.java))
+            startActivity(Intent(this, AddDeviceActivity::class.java))
         }
         binding.swipe.setOnRefreshListener {
             refreshOnlineStatus()
         }
 
+        // 底部导航
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> true
                 R.id.nav_playback -> {
-                    // If there's at least one device, open playback for the first one;
-                    // otherwise show a hint
                     val devices = viewModel.devices.value
                     if (devices.isNotEmpty()) {
                         startActivity(PlaybackActivity.intent(this, devices[0].id))
@@ -70,14 +67,17 @@ class MainActivity : AppCompatActivity() {
                         android.widget.Toast.makeText(this,
                             "请先添加摄像头", android.widget.Toast.LENGTH_SHORT).show()
                     }
+                    binding.bottomNav.selectedItemId = R.id.nav_home
                     true
                 }
                 R.id.nav_alarms -> {
                     startActivity(Intent(this, AlarmLogActivity::class.java))
+                    binding.bottomNav.selectedItemId = R.id.nav_home
                     true
                 }
                 R.id.nav_settings -> {
                     startActivity(AppSettingsActivity.intent(this))
+                    binding.bottomNav.selectedItemId = R.id.nav_home
                     true
                 }
                 else -> false
