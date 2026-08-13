@@ -1,12 +1,13 @@
 package com.cameramanager.app
 
 import android.app.Application
+import android.util.Log
 import com.cameramanager.app.data.AppDatabase
 import com.cameramanager.app.data.Repository
+import com.cameramanager.app.util.CrashGuard
 
 /**
- * Application entry point. Initializes the Room database and the single Repository
- * instance used across the app.
+ * Application 入口。初始化全局防闪退护网、Room 数据库与 Repository。
  */
 class CameraApp : Application() {
 
@@ -16,6 +17,8 @@ class CameraApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        runCatching { CrashGuard.install(this) }
+            .onFailure { Log.e("CameraApp", "CrashGuard install failed", it) }
     }
 
     companion object {

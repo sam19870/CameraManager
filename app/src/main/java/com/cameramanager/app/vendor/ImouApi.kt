@@ -97,6 +97,9 @@ object ImouApi : CameraVendorApi {
         ApiResult.Unsupported("设备端语音留言（请用乐橙官方App）")
 
     // ---- 告警 ----
+    override suspend fun setStatusLed(device: Device, on: Boolean) =
+        ApiResult.Unsupported("状态指示灯（请用乐橙官方App）")
+
     override suspend fun setWhiteLight(device: Device, on: Boolean) =
         ApiResult.Unsupported("白光补光灯（请用乐橙官方App）")
 

@@ -40,6 +40,14 @@
     <!-- 按钮禁用 -->
     <color name="btn_disabled">#C9CED6</color>
 
+    <!-- ============ TP-Link 官方设置页图标圆形底色 ============ -->
+    <color name="icon_orange">#FF9500</color>
+    <color name="icon_teal">#00C48C</color>
+    <color name="icon_gray">#A0A7B1</color>
+    <color name="icon_blue">#00A6FF</color>
+    <color name="icon_purple">#7B61FF</color>
+    <color name="section_bg">#F0F2F5</color>
+
     <!-- ============ 旧命名别名（兼容现有引用） ============ -->
     <color name="alarm_red">@color/error_red</color>
     <color name="surface">@color/bg_card</color>

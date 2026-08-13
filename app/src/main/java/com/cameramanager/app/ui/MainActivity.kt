@@ -28,18 +28,18 @@ import com.cameramanager.app.ui.voice.VoiceIntercomActivity
 import com.cameramanager.app.util.PermissionHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 首页 - 底部导航：首页/回放/消息/设置
- * 顶部工具栏：右侧「局域网扫描」入口 + 「分屏」入口
- * 右下角蓝色 FAB：点击进入添加摄像头页（IP+账号+密码+端口80，自动探测协议）
+ * 顶部工具栏右侧：「扫描局域网」「分屏预览」「+ 添加设备」（添加在右上角，不再用底部 FAB）
  *
  * =======================================
- *  防闪退策略（所有 startActivity 一律 try-catch）：
+ *  防闪退策略：
  * =======================================
- *  1. 所有跳转都包 [safeStart] ，失败 Toast 提示，永不崩
- *  2. Toolbar 先关 HomeAsUp ，避免主题未配置崩溃
- *  3. 底部导航跳转后强制 selectedItemId 回首页，不依赖返回栈
+ *  1. 全局 CrashGuard（Application 层）兜底，任何异常不再闪退
+ *  2. 所有跳转都包 [safeStart] ，失败 Toast 提示，永不崩
+ *  3. 下拉刷新带 6 秒超时，spinner 绝不卡死转圈
  */
 class MainActivity : AppCompatActivity() {
 
@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity() {
         try {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
-            // 显式配置 Toolbar，避免主题 HomeAsUp 空引用
             setSupportActionBar(binding.toolbar)
             supportActionBar?.apply {
                 setDisplayShowHomeEnabled(false)
@@ -72,9 +71,6 @@ class MainActivity : AppCompatActivity() {
             binding.recycler.layoutManager = GridLayoutManager(this, 2)
             binding.recycler.adapter = adapter
 
-            binding.fabAdd.setOnClickListener {
-                safeStart(Intent(this, AddDeviceActivity::class.java))
-            }
             binding.swipe.setOnRefreshListener { refreshOnlineStatus() }
 
             binding.bottomNav.setOnItemSelectedListener { item ->
@@ -106,9 +102,12 @@ class MainActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 viewModel.devices.collectLatest {
-                    adapter.submit(it)
+                    runCatching {
+                        adapter.submit(it)
+                        binding.emptyState.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
+                    }.onFailure { t -> Log.w(TAG, "submit list failed: ${t.message}", t) }
+                    // 无论成功失败，spinner 必须停
                     binding.swipe.isRefreshing = false
-                    binding.emptyState.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
                 }
             }
 
@@ -121,7 +120,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_toolbar_menu, menu)
+        runCatching { menuInflater.inflate(R.menu.main_toolbar_menu, menu) }
         return true
     }
 
@@ -129,6 +128,7 @@ class MainActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.action_scan -> { safeStart(Intent(this, DeviceScanActivity::class.java)); true }
             R.id.action_multiscreen -> { safeStart(Intent(this, MultiPreviewActivity::class.java)); true }
+            R.id.action_add -> { safeStart(Intent(this, AddDeviceActivity::class.java)); true }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -146,14 +146,17 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
+    /** 下拉刷新：6 秒硬超时，任何情况下 spinner 都会停止 */
     private fun refreshOnlineStatus() {
         lifecycleScope.launch {
-            runCatching {
-                viewModel.devices.value.forEach { d ->
-                    val reachable = com.cameramanager.app.net.NetworkScanner.testReachable(d.host, d.port, 800)
-                    viewModel.updateDevice(d.copy(online = reachable))
-                }
-            }.onFailure { t -> Log.w(TAG, "refreshOnlineStatus failed: ${t.message}", t) }
+            withTimeoutOrNull(6000) {
+                runCatching {
+                    viewModel.devices.value.forEach { d ->
+                        val reachable = com.cameramanager.app.net.NetworkScanner.testReachable(d.host, d.port, 800)
+                        viewModel.updateDevice(d.copy(online = reachable))
+                    }
+                }.onFailure { t -> Log.w(TAG, "refreshOnlineStatus failed: ${t.message}", t) }
+            }
             binding.swipe.isRefreshing = false
         }
     }

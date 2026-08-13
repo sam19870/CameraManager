@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 夜视照明子页：参考 TP-LINK 物联 App「夜视照明」官方布局 -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/bg_page">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@color/white" app:elevation="0dp">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+            app:title="夜视照明"
+            app:titleTextColor="@color/text_primary"
+            app:titleTextAppearance="@style/TextAppearance.CameraManager.ToolbarBold"
+            app:navigationIcon="@drawable/ic_back_dark"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:orientation="vertical" android:paddingTop="10dp">
+
+        <TextView style="@style/SettingSectionHeader" android:text="日夜配置"/>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            app:cardElevation="0dp" app:cardCornerRadius="0dp">
+            <include android:id="@+id/rowDayNight" layout="@layout/item_setting_row"/>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView style="@style/SettingSectionHeader" android:text="灯光设置"/>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            app:cardElevation="0dp" app:cardCornerRadius="0dp">
+            <include android:id="@+id/rowFillLight" layout="@layout/item_setting_row"/>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -11,4 +11,9 @@
         android:icon="@drawable/ic_view_quilt"
         android:title="分屏预览"
         app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_add"
+        android:icon="@drawable/ic_add"
+        android:title="添加设备"
+        app:showAsAction="always"/>
 </menu>

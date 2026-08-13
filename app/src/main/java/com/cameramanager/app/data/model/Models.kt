@@ -66,7 +66,9 @@ data class Device(
     /** 设备自身公网 RTSP 端口。 */
     val publicPort: Int = 0,
     /** 设备自身公网 ONVIF 端口。 */
-    val publicOnvifPort: Int = 0
+    val publicOnvifPort: Int = 0,
+    /** AI 智能追踪（人形自动跟随）开关。 */
+    val autoTrack: Boolean = false
 ) : Parcelable {
     /** Build the full RTSP URL using the given host/port/path. */
     fun rtspUrl(useHost: String = host, usePort: Int = port): String {

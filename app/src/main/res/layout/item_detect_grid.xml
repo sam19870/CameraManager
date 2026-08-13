@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 智能侦测宫格项（TP-Link 官方风格：彩色圆底图标 + 文字） -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:gravity="center_horizontal"
+    android:background="?attr/selectableItemBackground"
+    android:paddingTop="14dp" android:paddingBottom="14dp">
+
+    <ImageView android:id="@+id/ivIcon"
+        android:layout_width="46dp" android:layout_height="46dp"
+        android:background="@drawable/bg_oval"
+        android:backgroundTint="@color/icon_gray"
+        android:padding="11dp"
+        android:contentDescription="detect"/>
+
+    <TextView android:id="@+id/tvLabel"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"/>
+</LinearLayout>

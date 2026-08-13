@@ -83,6 +83,8 @@ interface CameraVendorApi {
     suspend fun uploadVoiceMessage(device: Device, audioFilePath: String): ApiResult<Unit>
 
     // ---- Security alarm ----
+    /** Toggle the device status LED (状态指示灯). */
+    suspend fun setStatusLed(device: Device, on: Boolean): ApiResult<Unit>
     suspend fun setWhiteLight(device: Device, on: Boolean): ApiResult<Unit>
     suspend fun triggerSiren(device: Device, on: Boolean): ApiResult<Unit>
     /** Set custom detection regions (human / region-intrusion / motion). */

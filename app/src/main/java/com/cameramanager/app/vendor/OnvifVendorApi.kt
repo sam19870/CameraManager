@@ -85,6 +85,9 @@ object OnvifVendorApi : CameraVendorApi {
     override suspend fun uploadVoiceMessage(device: Device, audioFilePath: String) =
         ApiResult.Unsupported("设备端语音留言")
 
+    override suspend fun setStatusLed(device: Device, on: Boolean) =
+        ApiResult.Unsupported("状态指示灯")
+
     override suspend fun setWhiteLight(device: Device, on: Boolean) =
         ApiResult.Unsupported("白光补光灯")
 

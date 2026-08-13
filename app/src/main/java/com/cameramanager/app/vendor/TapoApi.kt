@@ -155,6 +155,9 @@ object TapoApi : CameraVendorApi {
         rpc(device, "uploadVoiceMessage", JSONObject().put("path", audioFilePath))
 
     // ---- 安防告警 ----
+    override suspend fun setStatusLed(device: Device, on: Boolean) =
+        rpc(device, "setLedStatus", JSONObject().put("status", if (on) "on" else "off"))
+
     override suspend fun setWhiteLight(device: Device, on: Boolean) =
         rpc(device, "setWhitelightStatus", JSONObject().put("status", if (on) "on" else "off"))
 

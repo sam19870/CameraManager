@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设备控制子页：参考 TP-LINK 物联 App「设备控制」官方布局 -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/bg_page">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@color/white" app:elevation="0dp">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+            app:title="设备控制"
+            app:titleTextColor="@color/text_primary"
+            app:titleTextAppearance="@style/TextAppearance.CameraManager.ToolbarBold"
+            app:navigationIcon="@drawable/ic_back_dark"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingTop="10dp" android:paddingBottom="32dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardElevation="0dp" app:cardCornerRadius="0dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@color/white">
+                    <include android:id="@+id/rowStatusLed" layout="@layout/item_setting_row_switch"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowFlip" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowWdr" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowVideoParam" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowOsd" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowTalkMode" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowMicVolume" layout="@layout/item_setting_seekbar"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowSpkVolume" layout="@layout/item_setting_seekbar"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowNightLight" layout="@layout/item_setting_row"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
