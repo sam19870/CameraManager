@@ -3,6 +3,7 @@ package com.cameramanager.app.ui.scan
 import android.content.Intent
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
@@ -36,25 +37,31 @@ class DeviceScanActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityDeviceScanBinding.inflate(layoutInflater)
-        setContentView(binding.root)
         runCatching {
+            binding = ActivityDeviceScanBinding.inflate(layoutInflater)
+            setContentView(binding.root)
             setSupportActionBar(binding.toolbar)
             supportActionBar?.setDisplayHomeAsUpEnabled(true)
             supportActionBar?.setTitle("局域网摄像头")
+
+            adapter = ScannedDeviceAdapter { askAuthAndPreview(it) }
+            binding.recycler.layoutManager = LinearLayoutManager(this)
+            binding.recycler.adapter = adapter
+
+            binding.btnRescan.setOnClickListener { startScan() }
+            binding.btnAddManual.setOnClickListener {
+                runCatching { startActivity(Intent(this, AddDeviceActivity::class.java)) }
+                    .onFailure { t -> toast("打开失败: ${t.message}") }
+            }
+
+            // 不要进页面立刻启动扫描（防止用户一进来就卡 Progress）
+            // 显示个空状态说明+手动点按钮扫
+            adapter.submit(emptyList())
+        }.onFailure { t ->
+            Log.e(TAG, "onCreate failed: ${t.message}", t)
+            toast("扫描页初始化失败: ${t.message}")
+            finish()
         }
-
-        adapter = ScannedDeviceAdapter { askAuthAndPreview(it) }
-        binding.recycler.layoutManager = LinearLayoutManager(this)
-        binding.recycler.adapter = adapter
-
-        binding.btnRescan.setOnClickListener { startScan() }
-        binding.btnAddManual.setOnClickListener {
-            runCatching { startActivity(Intent(this, AddDeviceActivity::class.java)) }
-                .onFailure { t -> toast("打开失败: ${t.message}") }
-        }
-
-        startScan()
     }
 
     private fun startScan() {
@@ -144,5 +151,9 @@ class DeviceScanActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         releaseMulticast()
+    }
+
+    companion object {
+        private const val TAG = "DeviceScan"
     }
 }

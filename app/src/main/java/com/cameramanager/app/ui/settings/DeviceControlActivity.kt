@@ -208,8 +208,10 @@ class DeviceControlActivity : AppCompatActivity() {
     }
 
     private fun safeStart(intent: Intent) {
-        runCatching { startActivity(intent) }
-            .onFailure { t -> toast("打开页面失败: ${t.message ?: "未知错误"}") }
+        runCatching {
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(intent)
+        }.onFailure { t -> toast("打开页面失败: ${t.message ?: "未知错误"}") }
     }
 
     private fun unsupportedToast() = Toast.makeText(this, R.string.unsupported_hint, Toast.LENGTH_SHORT).show()

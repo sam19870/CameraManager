@@ -135,7 +135,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 跳转前先校验 Activity 存在，避免 Unable to start activity；任何异常都吞掉不崩。 */
+    /** 跳转前先校验 Activity 存在，避免 Unable to start activity；任何异常都吞掉不崩。
+     *  加 SINGLE_TOP / CLEAR_TOP 避免"像浏览器一样反复开新页面"造成的闪屏感。
+     */
     private fun safeStart(intent: Intent) {
         runCatching {
             val component = intent.resolveActivity(packageManager)
@@ -143,6 +145,7 @@ class MainActivity : AppCompatActivity() {
                 toast("功能未注册: ${intent.component?.className ?: intent.action}")
                 return
             }
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(intent)
         }.onFailure { t ->
             Log.w(TAG, "safeStart failed: ${t.message}", t)

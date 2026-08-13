@@ -429,6 +429,7 @@ class SettingsActivity : AppCompatActivity() {
                 toast("功能未注册: ${intent.component?.className ?: intent.action}")
                 return
             }
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(intent)
         }.onFailure { t -> toast("打开失败: ${t.message ?: t.javaClass.simpleName}".take(44)) }
     }

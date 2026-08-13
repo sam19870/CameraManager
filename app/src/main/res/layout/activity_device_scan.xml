@@ -7,7 +7,7 @@
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
         android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+        app:navigationIcon="@drawable/ic_back_white"/>
 
     <ProgressBar android:id="@+id/progress"
         style="?android:attr/progressBarStyleHorizontal"
