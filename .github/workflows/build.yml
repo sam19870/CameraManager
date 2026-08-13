@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Signed Release APK
 on:
   workflow_dispatch:
   push:
@@ -11,20 +11,33 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
+      # 流水线运行时，现场生成全新jks，覆盖旧文件
+      - name: Generate brand new keystore
+        run: |
+          keytool -genkey -v -keystore app/release.jks -alias mykey \
+          -storepass abc998877 -keypass abc998877 \
+          -dname "CN=MYAPP,OU=DEV,O=DEV,L=XI_AN,ST=SHAN_XI,C=CN" \
+          -keyalg RSA -keysize 2048 -validity 10000
+
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build Release APK
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_FILE: app/release.jks
+          KEYSTORE_PASSWORD: "abc998877"
+          KEY_ALIAS: "mykey"
+          KEY_PASSWORD: "abc998877"
         run: ./gradlew assembleRelease
 
-      - name: Upload APK
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: signed-release-apk
+          path: app/build/outputs/apk/release/*.apk
