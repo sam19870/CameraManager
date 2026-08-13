@@ -6,179 +6,174 @@
 
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+        android:background="@color/bg_dark" app:title="@string/add_device"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_back_white"/>
 
     <ScrollView
-        android:layout_width="match_parent" android:layout_height="match_parent">
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:fillViewport="true">
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:padding="16dp">
+            android:orientation="vertical" android:padding="20dp">
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="像 NVR 录像机一样简单：填 IP、账号、密码就行，协议和码流我们自动探测。"
+                android:textColor="@color/text_secondary" android:textSize="13sp"
+                android:lineSpacingExtra="3dp"
+                android:layout_marginBottom="20dp"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/device_name" android:layout_marginBottom="12dp">
+                android:hint="设备名称（可选）" android:layout_marginBottom="14dp"
+                app:boxBackgroundMode="outline" app:boxCornerRadiusTopStart="10dp"
+                app:boxCornerRadiusTopEnd="10dp" app:boxCornerRadiusBottomStart="10dp"
+                app:boxCornerRadiusBottomEnd="10dp"
+                app:boxStrokeColor="@color/brand_primary"
+                app:hintTextColor="@color/text_secondary">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editName" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
+                    android:layout_height="wrap_content" android:textColor="@color/text_primary"
+                    android:text="我的摄像头"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/ip_address" android:layout_marginBottom="12dp">
+                android:hint="* IP 地址 / 域名"
+                android:layout_marginBottom="14dp"
+                app:boxBackgroundMode="outline" app:boxCornerRadiusTopStart="10dp"
+                app:boxCornerRadiusTopEnd="10dp" app:boxCornerRadiusBottomStart="10dp"
+                app:boxCornerRadiusBottomEnd="10dp"
+                app:boxStrokeColor="@color/brand_primary"
+                app:startIconDrawable="@drawable/ic_ip" app:startIconTint="@color/text_secondary"
+                app:helperText="例：192.168.1.100 或域名"
+                app:helperTextTextColor="@color/text_secondary">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editHost" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:inputType="text"
-                    android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/port" android:layout_marginBottom="12dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editPort" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:inputType="number"
-                    android:text="554" android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/rtsp_path" android:layout_marginBottom="12dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editPath" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:text="stream0"
-                    android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/username" android:layout_marginBottom="12dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editUser" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/password" android:layout_marginBottom="12dp"
-                app:passwordToggleEnabled="true">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editPass" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:inputType="textPassword"
-                    android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="设备类型" android:textColor="@color/text_secondary"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioGroup android:id="@+id/vendorGroup"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:layout_marginBottom="12dp">
-                <RadioButton android:id="@+id/vendorGeneric"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:textColor="@color/text_primary"
-                    android:checked="true" android:text="通用ONVIF"/>
-                <RadioButton android:id="@+id/vendorTapo"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:textColor="@color/text_primary"
-                    android:text="TP-Link Tapo"/>
-                <RadioButton android:id="@+id/vendorImou"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:textColor="@color/text_primary"
-                    android:text="乐橙"/>
-            </RadioGroup>
-
-            <TextView android:id="@+id/vendorHint"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:background="@color/bg_card" android:padding="12dp"
-                android:textColor="@color/text_secondary" android:textSize="12sp"
-                android:lineSpacingExtra="2dp" android:layout_marginBottom="16dp"/>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchPtz"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/supports_ptz" android:textColor="@color/text_primary"
-                android:layout_marginBottom="8dp"/>
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="@string/onvif_port" android:layout_marginBottom="12dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editOnvifPort" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:inputType="number"
-                    android:text="2020" android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchAudio"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/supports_audio" android:textColor="@color/text_primary"
-                android:checked="true" android:layout_marginBottom="20dp"/>
-
-            <View android:layout_width="match_parent" android:layout_height="1dp"
-                android:background="@color/bg_card" android:layout_marginBottom="12dp"/>
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="路由 / 内网穿透（可选）" android:textColor="@color/text_secondary"
-                android:layout_marginBottom="8dp"/>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="设备所在内网 WiFi 名(SSID)" android:layout_marginBottom="12dp"
-                app:helperText="连上此 WiFi 时走内网，否则走公网/穿透">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editLanSsid" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="绑定穿透通道" android:textColor="@color/text_secondary"
-                android:layout_marginBottom="4dp"/>
-            <Spinner android:id="@+id/spinnerTunnel"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"/>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:hint="设备公网地址(DDNS/端口转发)" android:layout_marginBottom="12dp"
-                app:helperText="优先级低于穿透通道，高于内网地址">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editPublicHost" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:inputType="textUri"
                     android:textColor="@color/text_primary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:layout_marginBottom="20dp">
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="14dp">
+
                 <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:hint="公网RTSP端口"
-                    android:layout_marginEnd="8dp">
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:hint="* 端口（默认 80）"
+                    android:layout_marginEnd="8dp"
+                    app:boxBackgroundMode="outline" app:boxCornerRadiusTopStart="10dp"
+                    app:boxCornerRadiusTopEnd="10dp" app:boxCornerRadiusBottomStart="10dp"
+                    app:boxCornerRadiusBottomEnd="10dp"
+                    app:boxStrokeColor="@color/brand_primary"
+                    app:helperText="ONVIF/HTTP 端口"
+                    app:helperTextTextColor="@color/text_secondary">
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editPublicPort" android:layout_width="match_parent"
+                        android:id="@+id/editPort" android:layout_width="match_parent"
                         android:layout_height="wrap_content" android:inputType="number"
-                        android:text="554" android:textColor="@color/text_primary"/>
-                </com.google.android.material.textfield.TextInputLayout>
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:hint="公网ONVIF端口">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editPublicOnvifPort" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:inputType="number"
-                        android:text="0" android:textColor="@color/text_primary"/>
+                        android:text="80" android:textColor="@color/text_primary"/>
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="用户名（默认 admin）"
+                android:layout_marginBottom="14dp"
+                app:boxBackgroundMode="outline" app:boxCornerRadiusTopStart="10dp"
+                app:boxCornerRadiusTopEnd="10dp" app:boxCornerRadiusBottomStart="10dp"
+                app:boxCornerRadiusBottomEnd="10dp"
+                app:boxStrokeColor="@color/brand_primary"
+                app:startIconDrawable="@drawable/ic_user" app:startIconTint="@color/text_secondary">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editUser" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="admin"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="* 摄像头 admin 密码"
+                android:layout_marginBottom="18dp"
+                app:boxBackgroundMode="outline" app:boxCornerRadiusTopStart="10dp"
+                app:boxCornerRadiusTopEnd="10dp" app:boxCornerRadiusBottomStart="10dp"
+                app:boxCornerRadiusBottomEnd="10dp"
+                app:boxStrokeColor="@color/brand_primary"
+                app:startIconDrawable="@drawable/ic_lock" app:startIconTint="@color/text_secondary"
+                app:passwordToggleEnabled="true"
+                app:helperText="机身贴纸或官方 App 里的管理员密码"
+                app:helperTextTextColor="@color/text_secondary">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editPass" android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardProbe"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginBottom="18dp"
+                app:cardBackgroundColor="@color/bg_card"
+                app:cardCornerRadius="10dp"
+                app:strokeWidth="0dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:padding="14dp">
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical">
+                        <ProgressBar
+                            android:id="@+id/probeProgress"
+                            android:layout_width="22dp" android:layout_height="22dp"
+                            android:indeterminateTint="@color/brand_accent"/>
+                        <TextView
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="正在自动探测协议 / 码流 / 能力…"
+                            android:textColor="@color/text_primary"
+                            android:textStyle="bold" android:textSize="13sp"/>
+                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/probeLog"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textColor="#B0B6BF"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="2dp"
+                        android:fontFamily="monospace"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="horizontal">
-                <Button android:id="@+id/btnTest" style="@style/ActionButton"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancel" style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_marginEnd="8dp" android:text="@string/test_connection"/>
-                <Button android:id="@+id/btnSave" android:layout_width="0dp"
-                    android:layout_weight="1" android:layout_height="wrap_content"
-                    android:backgroundTint="@color/brand_accent"
-                    android:textColor="@color/black" android:text="@string/save"/>
+                    android:layout_marginEnd="8dp" app:cornerRadius="24dp"
+                    app:strokeColor="@color/text_secondary"
+                    android:textColor="@color/text_primary"
+                    android:text="取消"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSave"
+                    android:layout_width="0dp" android:layout_weight="1.2"
+                    app:cornerRadius="24dp"
+                    android:backgroundTint="@color/brand_primary"
+                    android:textColor="@color/white"
+                    app:icon="@drawable/ic_search"
+                    android:text="自动探测并保存"
+                    android:textSize="14sp"
+                    android:textStyle="bold"/>
             </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="🔒 密码仅保存在本机数据库，绝不上传任何服务器。"
+                android:textColor="#70B0B6BF" android:textSize="11sp"/>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

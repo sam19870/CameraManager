@@ -1,144 +1,225 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="@color/bg_dark">
+    android:background="#000000">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+    <org.videolan.libvlc.util.VLCVideoLayout
+        android:id="@+id/videoLayout"
+        android:layout_width="match_parent" android:layout_height="match_parent"/>
 
-    <FrameLayout
-        android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1.4" android:background="#000000">
-
-        <SurfaceView android:id="@+id/surface"
-            android:layout_width="match_parent" android:layout_height="match_parent"/>
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="top" android:orientation="vertical"
+        android:background="@drawable/bg_top_gradient">
 
         <LinearLayout
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_gravity="top|start" android:layout_margin="12dp"
-            android:orientation="vertical">
+            android:layout_width="match_parent" android:layout_height="56dp"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:paddingStart="8dp" android:paddingEnd="8dp"
+            android:layout_marginTop="24dp">
 
-            <TextView android:id="@+id/statusText"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:background="#80000000" android:padding="6dp"
-                android:textColor="@color/white" android:textSize="12sp" android:text="正在打开…"/>
+            <ImageView
+                android:id="@+id/btnBack"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="8dp" android:src="@drawable/ic_back_white"
+                android:contentDescription="返回"/>
 
-            <TextView android:id="@+id/routeText"
+            <LinearLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:layout_marginStart="4dp">
+                <TextView android:id="@+id/titleText"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textColor="@color/white" android:textSize="16sp"
+                    android:textStyle="bold" android:maxLines="1"
+                    android:ellipsize="end" android:text="摄像头"/>
+                <LinearLayout
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="2dp">
+                    <View android:layout_width="6dp" android:layout_height="6dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/dot_online"/>
+                    <TextView android:id="@+id/statusText"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#CCFFFFFF" android:textSize="11sp"
+                        android:text="连接中"/>
+                    <TextView
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#80FFFFFF" android:textSize="11sp"
+                        android:text=" · " android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"/>
+                    <TextView android:id="@+id/routeText"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#B8E0FF" android:textSize="11sp"
+                        android:text="选路中…"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView android:id="@+id/profileText"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" android:background="#80000000"
-                android:padding="6dp" android:textColor="#B8E0FF" android:textSize="12sp"
-                android:text="选路中…"/>
+                android:textColor="@color/white" android:textSize="12sp"
+                android:background="#4D000000" android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp" android:layout_marginEnd="8dp"
+                android:text="标清"/>
+
+            <ImageView
+                android:id="@+id/btnMore"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="8dp" android:src="@drawable/ic_more_vert_white"
+                android:contentDescription="更多设置"/>
         </LinearLayout>
+    </LinearLayout>
 
-        <TextView android:id="@+id/profileText"
+    <TextView android:id="@+id/timeoutText"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="top|end" android:layout_marginTop="96dp"
+        android:layout_marginEnd="12dp" android:background="#80CC3300"
+        android:paddingHorizontal="8dp" android:paddingVertical="4dp"
+        android:textColor="@color/white" android:textSize="11sp"
+        android:text="超时: 0" android:visibility="gone"/>
+
+    <View android:id="@+id/recordIndicator"
+        android:layout_width="10dp" android:layout_height="10dp"
+        android:layout_gravity="top|end" android:layout_marginTop="100dp"
+        android:layout_marginEnd="96dp"
+        android:background="@drawable/dot_online" android:visibility="gone"/>
+
+    <LinearLayout android:id="@+id/reconnectOverlay"
+        android:layout_width="260dp" android:layout_height="wrap_content"
+        android:layout_gravity="center" android:orientation="vertical"
+        android:gravity="center" android:visibility="gone"
+        android:background="@drawable/bg_reconnect_card" android:padding="20dp">
+        <ProgressBar
+            android:id="@+id/reconnectProgress"
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:indeterminateTint="@color/brand_accent"/>
+        <TextView android:id="@+id/reconnectHint"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_gravity="top|end" android:layout_margin="12dp"
-            android:background="#80000000" android:padding="6dp"
-            android:textColor="@color/white" android:textSize="12sp" android:text="标清"/>
-
-        <TextView android:id="@+id/timeoutText"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/white" android:textSize="13sp"
+            android:gravity="center"
+            android:text="画面无响应，正在重连"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReconnect"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end" android:layout_margin="12dp"
-            android:background="#80CC3300" android:padding="6dp"
-            android:textColor="@color/white" android:textSize="12sp"
-            android:text="超时: 0" android:visibility="gone"/>
-
-        <View android:id="@+id/recordIndicator"
-            android:layout_width="12dp" android:layout_height="12dp"
-            android:layout_gravity="bottom|start" android:layout_margin="14dp"
-            android:background="@drawable/dot_online" android:visibility="gone"/>
-
-        <LinearLayout android:id="@+id/reconnectOverlay"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_gravity="center" android:orientation="vertical"
-            android:gravity="center" android:visibility="gone"
-            android:background="#B0000000" android:padding="20dp">
-            <TextView android:id="@+id/reconnectHint"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textColor="@color/white" android:textSize="14sp"
-                android:text="画面无响应，已停止自动重连"/>
-            <Button android:id="@+id/btnReconnect"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="12dp" android:backgroundTint="@color/brand_accent"
-                android:textColor="@color/black" android:text="重连"/>
-        </LinearLayout>
-    </FrameLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:padding="10dp"
-        android:background="@color/bg_card" android:gravity="center">
-        <Button android:id="@+id/btnProfile" style="@style/ActionButton" android:text="@string/resolution"/>
-        <Button android:id="@+id/btnRotate" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/flip"/>
-        <Button android:id="@+id/btnMirror" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/mirror"/>
-        <Button android:id="@+id/btnSnapshot" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/snapshot"/>
+            android:layout_marginTop="14dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="@color/brand_accent"
+            android:textColor="@color/black"
+            android:text="手动重连"
+            android:visibility="gone"/>
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:padding="10dp"
-        android:background="@color/bg_card" android:gravity="center">
-        <Button android:id="@+id/btnRecord" style="@style/ActionButton" android:text="@string/record"/>
-        <Button android:id="@+id/btnDeterrence" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/deterrence"/>
-        <Button android:id="@+id/btnAudio" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="@string/voice_intercom"/>
-    </LinearLayout>
+        android:layout_gravity="bottom" android:orientation="vertical"
+        android:background="@drawable/bg_bottom_gradient">
 
-    <HorizontalScrollView
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:scrollbars="none" android:background="@color/bg_card">
-        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:padding="8dp">
-            <Button android:id="@+id/btnPreset" style="@style/ActionButton" android:text="预置位"/>
-            <Button android:id="@+id/btnHome" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="一键复位"/>
-            <Button android:id="@+id/btnCruise" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="自动巡航"/>
-            <Button android:id="@+id/btnAutoTrack" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="AI追踪"/>
-            <Button android:id="@+id/btnNight" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="夜视"/>
-            <Button android:id="@+id/btnPrivacy" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="隐私遮蔽"/>
-            <Button android:id="@+id/btnWhiteLight" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="白光灯"/>
-            <Button android:id="@+id/btnSiren" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="警笛"/>
-            <Button android:id="@+id/btnFloating" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="悬浮窗"/>
-            <Button android:id="@+id/btnManage" style="@style/ActionButton" android:layout_marginStart="8dp" android:text="设备管理"/>
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center"
+            android:paddingTop="16dp" android:paddingBottom="4dp"
+            android:paddingHorizontal="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSnapshot" style="@style/IconActionBtn"
+                app:icon="@drawable/ic_snapshot" android:text="截图"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRecord" style="@style/IconActionBtn"
+                app:icon="@drawable/ic_record" android:text="录像"
+                app:iconTint="@color/alarm_red"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAudio" style="@style/IconActionBtn"
+                app:icon="@drawable/ic_mic" android:text="对讲"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProfile" style="@style/IconActionBtn"
+                app:icon="@drawable/ic_resolution" android:text="清晰度"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMoreTools" style="@style/IconActionBtn"
+                app:icon="@drawable/ic_toolbox" android:text="更多"/>
         </LinearLayout>
-    </HorizontalScrollView>
 
-    <FrameLayout
-        android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1" android:background="@color/bg_dark">
-
-        <LinearLayout android:id="@+id/ptzPanel"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_gravity="center" android:orientation="vertical"
+        <FrameLayout
+            android:id="@+id/ptzPanel"
+            android:layout_width="match_parent" android:layout_height="260dp"
             android:visibility="gone">
 
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:gravity="center">
-                <Button android:id="@+id/ptzLeftUp" style="@style/PtzButton" android:text="↖"/>
-                <Button android:id="@+id/ptzUp" style="@style/PtzButton" android:layout_marginHorizontal="8dp" android:text="↑"/>
-                <Button android:id="@+id/ptzRightUp" style="@style/PtzButton" android:text="↗"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:gravity="center" android:layout_marginVertical="8dp">
-                <Button android:id="@+id/ptzLeft" style="@style/PtzButton" android:text="←"/>
-                <View android:layout_width="48dp" android:layout_height="48dp" android:layout_marginHorizontal="8dp"/>
-                <Button android:id="@+id/ptzRight" style="@style/PtzButton" android:text="→"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:gravity="center">
-                <Button android:id="@+id/ptzLeftDown" style="@style/PtzButton" android:text="↙"/>
-                <Button android:id="@+id/ptzDown" style="@style/PtzButton" android:layout_marginHorizontal="8dp" android:text="↓"/>
-                <Button android:id="@+id/ptzRightDown" style="@style/PtzButton" android:text="↘"/>
+            <ImageView
+                android:layout_width="220dp" android:layout_height="220dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_ptz_disc"/>
+
+            <ImageView android:id="@+id/ptzUp"
+                android:layout_width="56dp" android:layout_height="56dp"
+                android:layout_gravity="top|center_horizontal"
+                android:layout_marginTop="18dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp" android:src="@drawable/ic_ptz_up"
+                app:tint="@color/white"/>
+            <ImageView android:id="@+id/ptzDown"
+                android:layout_width="56dp" android:layout_height="56dp"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="18dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp" android:src="@drawable/ic_ptz_down"
+                app:tint="@color/white"/>
+            <ImageView android:id="@+id/ptzLeft"
+                android:layout_width="56dp" android:layout_height="56dp"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="18dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp" android:src="@drawable/ic_ptz_left"
+                app:tint="@color/white"/>
+            <ImageView android:id="@+id/ptzRight"
+                android:layout_width="56dp" android:layout_height="56dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="18dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp" android:src="@drawable/ic_ptz_right"
+                app:tint="@color/white"/>
+            <LinearLayout
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center" android:orientation="horizontal"
+                android:gravity="center">
+                <ImageView android:id="@+id/ptzZoomOut"
+                    android:layout_width="40dp" android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp" android:src="@drawable/ic_zoom_out"
+                    app:tint="@color/white"/>
+                <View android:layout_width="64dp" android:layout_height="64dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:background="@drawable/bg_ptz_center"/>
+                <ImageView android:id="@+id/ptzZoomIn"
+                    android:layout_width="40dp" android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp" android:src="@drawable/ic_zoom_in"
+                    app:tint="@color/white"/>
             </LinearLayout>
 
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:layout_gravity="center"
-                android:layout_marginTop="10dp">
-                <Button android:id="@+id/ptzZoomIn" style="@style/PtzButton" android:text="＋" android:layout_marginEnd="12dp"/>
-                <Button android:id="@+id/ptzZoomOut" style="@style/PtzButton" android:text="－"/>
+            <LinearLayout
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:orientation="horizontal" android:padding="12dp">
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btnPreset"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="预置位" android:textSize="12sp"
+                    app:chipBackgroundColor="#40000000"
+                    android:textColor="@color/white"/>
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btnCruise"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="巡航" android:textSize="12sp"
+                    app:chipBackgroundColor="#40000000"
+                    android:textColor="@color/white"/>
             </LinearLayout>
-        </LinearLayout>
-    </FrameLayout>
-</LinearLayout>
+        </FrameLayout>
+
+        <View android:layout_height="8dp" android:layout_width="match_parent"/>
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/bg_dark" app:title="@string/app_settings_title"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_back_white"/>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:clipToPadding="false"
+        android:paddingBottom="24dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <!-- ===== 内网穿透 ===== -->
+            <TextView style="@style/SectionTitle" android:text="@string/section_tunnel"
+                android:layout_marginBottom="8dp"/>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardTunnel"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                app:cardElevation="0dp" app:strokeWidth="0dp"
+                android:layout_marginBottom="18dp"
+                app:rippleColor="@color/bg_card_2">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:padding="16dp"
+                    android:gravity="center_vertical">
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="40dp" android:layout_height="40dp"
+                        app:cardCornerRadius="10dp" app:cardElevation="0dp"
+                        app:strokeWidth="0dp"
+                        app:cardBackgroundColor="#1A1677FF">
+                        <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                            android:src="@drawable/ic_network" android:padding="9dp"
+                            app:tint="@color/brand_primary"/>
+                    </com.google.android.material.card.MaterialCardView>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="@string/tunnel_manage" android:textColor="@color/text_primary"
+                            android:textSize="15sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="frp / ngrok / ZeroTier / 端口转发"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_tertiary"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ===== 通用设置 ===== -->
+            <TextView style="@style/SectionTitle" android:text="通用"
+                android:layout_marginBottom="8dp"/>
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                app:cardElevation="0dp" app:strokeWidth="0dp"
+                android:layout_marginBottom="18dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="16dp"
+                        android:gravity="center_vertical">
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="40dp" android:layout_height="40dp"
+                            app:cardCornerRadius="10dp" app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="#1A00C48C">
+                            <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                                android:src="@drawable/ic_alarm" android:padding="9dp"
+                                app:tint="@color/online_green"/>
+                        </com.google.android.material.card.MaterialCardView>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:layout_marginStart="14dp"
+                            android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="告警消息推送" android:textColor="@color/text_primary"
+                                android:textSize="15sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="运动侦测/人形告警通知"
+                                android:textColor="@color/text_secondary" android:textSize="12sp"
+                                android:layout_marginTop="2dp"/>
+                        </LinearLayout>
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchAlarm"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:checked="true"/>
+                    </LinearLayout>
+                    <View style="@style/DividerLine"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="16dp"
+                        android:gravity="center_vertical">
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="40dp" android:layout_height="40dp"
+                            app:cardCornerRadius="10dp" app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="#1AFF7A00">
+                            <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                                android:src="@drawable/ic_record" android:padding="9dp"
+                                app:tint="@color/brand_accent"/>
+                        </com.google.android.material.card.MaterialCardView>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:layout_marginStart="14dp"
+                            android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="后台侦测服务" android:textColor="@color/text_primary"
+                                android:textSize="15sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="保持后台运行以持续监控"
+                                android:textColor="@color/text_secondary" android:textSize="12sp"
+                                android:layout_marginTop="2dp"/>
+                        </LinearLayout>
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchBackground"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:checked="true"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ===== 关于 ===== -->
+            <TextView style="@style/SectionTitle" android:text="@string/section_about"
+                android:layout_marginBottom="8dp"/>
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                app:cardElevation="0dp" app:strokeWidth="0dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:padding="20dp"
+                    android:gravity="center">
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp" android:layout_height="56dp"
+                        app:cardCornerRadius="14dp" app:cardElevation="0dp"
+                        app:strokeWidth="0dp"
+                        app:cardBackgroundColor="@color/brand_primary">
+                        <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                            android:src="@drawable/ic_camera" android:padding="14dp"
+                            app:tint="@color/white"/>
+                    </com.google.android.material.card.MaterialCardView>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/app_name" android:textColor="@color/text_primary"
+                        android:textSize="16sp" android:textStyle="bold"
+                        android:layout_marginTop="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/about_version" android:textColor="@color/text_secondary"
+                        android:textSize="13sp" android:layout_marginTop="4dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/about_desc" android:textColor="@color/text_tertiary"
+                        android:textSize="12sp" android:layout_marginTop="10dp"
+                        android:gravity="center" android:lineSpacingExtra="2dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

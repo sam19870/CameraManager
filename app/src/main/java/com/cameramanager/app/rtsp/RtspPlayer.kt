@@ -2,48 +2,35 @@ package com.cameramanager.app.rtsp
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.Surface
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.util.VLCVideoLayout
+import java.util.ArrayList
 
 /**
- * Wraps Android native [MediaPlayer] to provide real-time RTSP preview with
- * switchable resolution profiles, frame capture (screenshot) and local recording.
+ * libVLC 3.5.1 封装的 RTSP 播放器（VLCVideoLayout + attachViews）。
  *
- * Streaming resolution profiles:
- *  - PROFILE_HD (主码流): high quality, suits WiFi / LAN.
- *  - PROFILE_SD (子码流): balanced, suits mobile network.
- *  - PROFILE_SMOOTH (流畅): lowest, suits weak network.
- *
- * 防卡死与重连机制（v2 新增）：
- *  - 播放启动后启动 [openTimeoutMs] 倒计时，超时未进入 PLAYING 视为一次超时，
- *    累计 [timeoutCount] 并触发自动重连（最多 [maxAutoRetries] 次）。
- *  - 进入 PLAYING 后启动 [stallTimeoutMs] 看门狗：超过该时长没收到任何
- *    状态事件（说明画面卡死无心跳）也视为超时。
- *  - 自动重连次数耗尽后回调 [Listener.onStalled]，由 UI 弹「重连」按钮，
- *    避免无脑重试把 App 卡死。
- *  - [stop] / [release] 会清掉所有定时器，离开界面不会泄漏。
+ * 为什么用 VLCVideoLayout？
+ *  - libVLC 官方推荐封装，内部自动管理 SurfaceView/TextureView + VLCVout；
+ *  - 对各种国产摄像头 H.264/H.265/音频兼容性碾压 Android 原生 MediaPlayer；
+ *  - 强制 RTSP over TCP，避免 UDP 丢包导致的黑屏花屏。
  */
 class RtspPlayer(private val context: Context) {
 
+    private var libVLC: LibVLC? = null
     private var mediaPlayer: MediaPlayer? = null
+    private var videoLayout: VLCVideoLayout? = null
     private var currentUrl: String? = null
     private var currentProfile: Int = PROFILE_SD
-    private var surfaceView: SurfaceView? = null
-    private var surfaceHolderCallback: SurfaceHolder.Callback? = null
+    @Volatile private var viewAttached: Boolean = false
 
     private val main = Handler(Looper.getMainLooper())
-
-    /** 启动后多久没进 PLAYING 算超时（ms）。 */
-    private val openTimeoutMs: Long = 12_000
-    /** 进入 PLAYING 后多久没收到任何事件算卡死（ms）。 */
-    private val stallTimeoutMs: Long = 20_000
-    /** 自动重连上限，超过后停止并交给 UI 提示手动重连。 */
+    private val openTimeoutMs: Long = 15_000
+    private val stallTimeoutMs: Long = 25_000
     private val maxAutoRetries: Int = 3
 
     private var timeoutCount: Int = 0
@@ -59,111 +46,78 @@ class RtspPlayer(private val context: Context) {
     interface Listener {
         fun onStateChanged(state: State)
         fun onError(message: String)
-        /** 超时/卡死并耗尽自动重连次数时回调，UI 应显示「重连」按钮。 */
         fun onStalled(timeoutCount: Int, lastError: String)
-        /** 自动重连开始时回调，UI 可显示「重连中 (n/3)」。 */
         fun onReconnecting(attempt: Int, max: Int)
     }
 
     enum class State { IDLE, OPENING, BUFFERING, PLAYING, PAUSED, STOPPED, ENDED, ERROR }
 
     companion object {
-        const val PROFILE_HD = 0      // 主码流
-        const val PROFILE_SD = 1      // 子码流
-        const val PROFILE_SMOOTH = 2  // 流畅
+        const val PROFILE_HD = 0
+        const val PROFILE_SD = 1
+        const val PROFILE_SMOOTH = 2
         private const val TAG = "RtspPlayer"
     }
 
-    private fun ensureMediaPlayer(): MediaPlayer {
-        mediaPlayer?.let { return it }
-        val mp = MediaPlayer()
-        mp.setOnInfoListener { _, what, extra ->
-            handleInfo(what, extra)
-            true
+    private fun ensureLibVLC(): LibVLC = libVLC ?: run {
+        val args = ArrayList<String>().apply {
+            add("-vvv")
+            add("--no-drop-late-frames")
+            add("--no-skip-frames")
+            add("--rtsp-tcp")
+            add("--avcodec-hw=any")
+            add("--network-caching=300")
+            add("--file-caching=300")
+            add("--live-caching=300")
+            add("--sout-mux-caching=300")
+            add("--aout=android_audiotrack")
         }
-        mp.setOnCompletionListener {
-            handleState(State.ENDED)
-        }
-        mp.setOnPreparedListener {
-            Log.d(TAG, "MediaPlayer prepared, calling start()")
-            it.start()
-            isPlayingState = true
-            scheduleWatchdog(stallTimeoutMs)
-            handleState(State.PLAYING)
-        }
-        mp.setOnErrorListener { _, what, extra ->
-            val msg = "播放出错 ($what/$extra)，请检查网络或设备地址"
-            listener?.onError(msg)
-            handleState(State.ERROR)
-            onTimeout(msg)
-            true
-        }
-        mp.setOnBufferingUpdateListener { _, percent ->
-            if (percent < 100) handleState(State.BUFFERING)
-        }
-        mediaPlayer = mp
-        return mp
+        LibVLC(context.applicationContext, args).also { libVLC = it }
     }
 
-    /**
-     * Attach to a [SurfaceView] and start playing [url] at the given [profile].
-     */
-    fun play(surfaceView: SurfaceView, url: String, profile: Int) {
+    private fun ensureMediaPlayer(): MediaPlayer = mediaPlayer ?: run {
+        MediaPlayer(ensureLibVLC()).also { mp ->
+            mp.setEventListener { event -> onVlcEvent(event) }
+            mediaPlayer = mp
+        }
+    }
+
+    fun play(layout: VLCVideoLayout, url: String, profile: Int) {
         if (released) return
-        this.surfaceView = surfaceView
-        currentUrl = url
-        currentProfile = profile
-        autoRetries = 0
-        timeoutCount = 0
-        stopped = false
+        this.videoLayout = layout
+        this.currentUrl = url
+        this.currentProfile = profile
+        this.autoRetries = 0
+        this.timeoutCount = 0
+        this.stopped = false
         startPlaybackInternal()
     }
 
     private fun startPlaybackInternal() {
-        val sv = surfaceView ?: return
+        val vl = videoLayout ?: return
         val url = currentUrl ?: return
         try {
             val mp = ensureMediaPlayer()
-            mp.reset()
-            // 选路逻辑：profile 用来在 URL 层拼主码流/子码流路径（URL 已在调用方拼好）。
-            // 这里仅在 MediaPlayer 层做缓冲参数启发式处理。
-            when (currentProfile) {
-                PROFILE_HD -> {
-                    // 主码流：稍微多一点缓冲避免花屏
-                }
-                PROFILE_SD -> {
-                }
-                PROFILE_SMOOTH -> {
-                }
+            if (!viewAttached) {
+                runCatching {
+                    mp.attachViews(vl, null, false, true)
+                }.onSuccess { viewAttached = true }
+                 .onFailure { Log.w(TAG, "attachViews: ${it.message}") }
             }
-            // 等 Surface 就绪再 setSurface 并 prepareAsync
-            val holder = sv.holder
-            val surface = holder.surface
-            if (surface != null && surface.isValid) {
-                mp.setSurface(surface)
-            } else {
-                // 未就绪，绑一次 Callback，created 时重入
-                val old = surfaceHolderCallback
-                if (old != null) holder.removeCallback(old)
-                val cb = object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(h: SurfaceHolder) {
-                        main.post {
-                            if (!released && !stopped && currentUrl == url) {
-                                try {
-                                    mediaPlayer?.setSurface(h.surface)
-                                } catch (_: Exception) { /* ignore */ }
-                            }
-                        }
-                        try { holder.removeCallback(this) } catch (_: Exception) {}
-                    }
-                    override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hg: Int) {}
-                    override fun surfaceDestroyed(h: SurfaceHolder) {}
-                }
-                surfaceHolderCallback = cb
-                holder.addCallback(cb)
+            val media = Media(ensureLibVLC(), android.net.Uri.parse(url))
+            val cache = when (currentProfile) {
+                PROFILE_HD -> 500
+                PROFILE_SD -> 300
+                else -> 200
             }
-            mp.setDataSource(context, Uri.parse(url))
-            mp.prepareAsync()
+            media.addOption(":network-caching=$cache")
+            media.addOption(":rtsp-tcp")
+            media.addOption(":avcodec-hw=any")
+            media.addOption(":file-caching=$cache")
+            media.addOption(":live-caching=$cache")
+            mp.media = media
+            media.release()
+            mp.play()
             isPlayingState = false
             lastEventTime = System.currentTimeMillis()
             listener?.onStateChanged(State.OPENING)
@@ -187,85 +141,83 @@ class RtspPlayer(private val context: Context) {
         released = true
         cancelWatchdog()
         try { stop() } catch (_: Exception) {}
+        try {
+            if (viewAttached) { mediaPlayer?.detachViews(); viewAttached = false }
+        } catch (_: Exception) {}
         try { mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
-        surfaceHolderCallback = null
-        surfaceView = null
+        try { libVLC?.release() } catch (_: Exception) {}
+        libVLC = null
+        videoLayout = null
     }
 
     fun isPlaying(): Boolean = try {
         isPlayingState && mediaPlayer?.isPlaying == true
-    } catch (_: Exception) {
-        false
-    }
+    } catch (_: Exception) { false }
 
     fun getCurrentProfile(): Int = currentProfile
-
-    /** 累计超时次数（含自动重连触发的）。 */
     fun getTimeoutCount(): Int = timeoutCount
 
-    /**
-     * 用户点击「重连」时调用：重置自动重连计数并尝试重新播放。
-     * 不会清 [timeoutCount]，便于 UI 累计显示。
-     */
     fun manualReconnect() {
         if (released) return
         autoRetries = 0
-        if (currentUrl == null || surfaceView == null) return
+        if (currentUrl == null || videoLayout == null) return
         stopped = false
         try { mediaPlayer?.stop() } catch (_: Exception) {}
         isPlayingState = false
         main.postDelayed({
             if (!released && !stopped) startPlaybackInternal()
-        }, 200)
+        }, 300)
     }
 
-    private fun handleInfo(what: Int, extra: Int) {
+    private fun onVlcEvent(event: MediaPlayer.Event) {
         lastEventTime = System.currentTimeMillis()
-        when (what) {
-            MediaPlayer.MEDIA_INFO_BUFFERING_START -> handleState(State.BUFFERING)
-            MediaPlayer.MEDIA_INFO_BUFFERING_END -> handleState(State.PLAYING)
-            MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START -> {
+        when (event.type) {
+            MediaPlayer.Event.Opening -> {
+                listener?.onStateChanged(State.OPENING)
+            }
+            MediaPlayer.Event.Buffering -> {
+                if (event.buffering < 100f) listener?.onStateChanged(State.BUFFERING)
+            }
+            MediaPlayer.Event.Playing -> {
                 isPlayingState = true
                 scheduleWatchdog(stallTimeoutMs)
-                handleState(State.PLAYING)
+                listener?.onStateChanged(State.PLAYING)
+            }
+            MediaPlayer.Event.Paused -> listener?.onStateChanged(State.PAUSED)
+            MediaPlayer.Event.Stopped -> listener?.onStateChanged(State.STOPPED)
+            MediaPlayer.Event.EndReached -> {
+                isPlayingState = false
+                listener?.onStateChanged(State.ENDED)
+            }
+            MediaPlayer.Event.EncounteredError -> {
+                isPlayingState = false
+                val msg = "播放错误（设备拒绝或地址不可达）"
+                listener?.onError(msg)
+                listener?.onStateChanged(State.ERROR)
+                onTimeout(msg)
             }
         }
     }
 
-    private fun handleState(state: State) {
-        lastEventTime = System.currentTimeMillis()
-        listener?.onStateChanged(state)
-    }
-
-    /**
-     * 启动看门狗：[delayMs] 后检查是否需要判定超时。每次启动递增 token，
-     * 旧 token 的回调会被丢弃，避免误判。
-     */
     private fun scheduleWatchdog(delayMs: Long) {
         val token = ++watchdogToken
         main.postDelayed({
             if (released || token != watchdogToken) return@postDelayed
             if (isPlayingState) {
-                // PLAYING 期间：距离上次事件太久没动静 → 卡死
                 val idle = System.currentTimeMillis() - lastEventTime
                 if (idle >= stallTimeoutMs - 500) {
                     onTimeout("画面长时间无响应")
                 } else {
-                    // 重新挂下一个看门狗
                     scheduleWatchdog(stallTimeoutMs)
                 }
             } else {
-                // 还没进 PLAYING：判定启动超时
                 onTimeout("连接超时，未进入播放")
             }
         }, delayMs)
     }
 
-    private fun cancelWatchdog() {
-        // 仅靠 token 失效已有挂起的回调，避免误删主线程上其他组件的回调。
-        watchdogToken++
-    }
+    private fun cancelWatchdog() { watchdogToken++ }
 
     private fun onTimeout(reason: String) {
         timeoutCount++
@@ -277,23 +229,19 @@ class RtspPlayer(private val context: Context) {
             isPlayingState = false
             main.postDelayed({
                 if (!released && !stopped) startPlaybackInternal()
-            }, 800L * autoRetries)   // 退避：第 1 次 0.8s，第 2 次 1.6s，第 3 次 2.4s
+            }, 800L * autoRetries)
         } else {
             listener?.onStalled(timeoutCount, reason)
         }
     }
 
-    /**
-     * Capture the current displayed frame into a [Bitmap]. Native MediaPlayer does
-     * not expose direct frame grabbing, so we fall back to the SurfaceView's drawing
-     * cache as a best-effort capture.
-     */
     @Suppress("DEPRECATION")
-    fun captureFrame(surfaceView: SurfaceView): Bitmap? {
+    fun captureFrame(): Bitmap? {
+        val vl = videoLayout ?: return null
         return try {
-            surfaceView.isDrawingCacheEnabled = true
-            val bmp = Bitmap.createBitmap(surfaceView.drawingCache)
-            surfaceView.isDrawingCacheEnabled = false
+            vl.isDrawingCacheEnabled = true
+            val bmp = Bitmap.createBitmap(vl.drawingCache)
+            vl.isDrawingCacheEnabled = false
             bmp
         } catch (e: Exception) {
             Log.w(TAG, "captureFrame failed: ${e.message}")

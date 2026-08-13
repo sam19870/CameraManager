@@ -7,16 +7,21 @@
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/brand_accent</item>
         <item name="colorOnSecondary">@color/black</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorError">@color/alarm_red</item>
         <item name="android:colorBackground">@color/bg_dark</item>
         <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/brand_primary_dark</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:navigationBarColor" tools:targetApi="21">@color/bg_dark</item>
         <item name="materialAlertDialogTheme">@style/AlertDialogDark</item>
     </style>
 
-    <style name="AlertDialogDark" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+    <style name="AlertDialogDark" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <item name="android:background">@color/bg_card</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="colorSurface">@color/bg_card</item>
     </style>
 
     <style name="CardDark">
@@ -24,6 +29,7 @@
         <item name="android:padding">12dp</item>
     </style>
 
+    <!-- PTZ 方向按钮（单独使用时） -->
     <style name="PtzButton">
         <item name="android:background">@drawable/bg_ptz_button</item>
         <item name="android:textColor">@color/text_primary</item>
@@ -33,11 +39,47 @@
         <item name="android:gravity">center</item>
     </style>
 
-    <style name="ActionButton">
-        <item name="android:background">@drawable/bg_action_button</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:padding">10dp</item>
+    <!-- 预览底部快捷功能按钮（扁平化，图标+文字） -->
+    <style name="IconActionBtn" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingHorizontal">6dp</item>
+        <item name="android:paddingVertical">10dp</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">11sp</item>
+        <item name="iconGravity">textTop</item>
+        <item name="iconSize">24dp</item>
+        <item name="iconTint">@color/white</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="android:layout_marginHorizontal">2dp</item>
+    </style>
+
+    <!-- 分组标题 -->
+    <style name="SectionTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingBottom">6dp</item>
+    </style>
+
+    <!-- 卡片内分隔线 -->
+    <style name="DividerLine">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">0.5dp</item>
+        <item name="android:background">@color/divider</item>
+        <item name="android:layout_marginStart">54dp</item>
+    </style>
+
+    <!-- 通用操作按钮（扁平胶囊型） -->
+    <style name="ActionButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:layout_marginBottom">6dp</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="backgroundTint">@color/brand_primary</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">13sp</item>
     </style>
 </resources>

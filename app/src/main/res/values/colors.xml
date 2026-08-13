@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#1565C0</color>
-    <color name="brand_primary_dark">#0D47A1</color>
-    <color name="brand_accent">#FF9800</color>
-    <color name="bg_dark">#101418</color>
-    <color name="bg_card">#1C2026</color>
-    <color name="surface">#1A1F26</color>
+    <color name="brand_primary">#1677FF</color>
+    <color name="brand_primary_dark">#0E5FD9</color>
+    <color name="brand_accent">#FF7A00</color>
+    <color name="bg_dark">#0B0E13</color>
+    <color name="bg_card">#171B22</color>
+    <color name="bg_card_2">#1F242C</color>
+    <color name="surface">#12161D</color>
     <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B0B6BF</color>
-    <color name="online_green">#4CAF50</color>
-    <color name="offline_gray">#9E9E9E</color>
-    <color name="alarm_red">#F44336</color>
-    <color name="ptz_btn">#2A2F38</color>
-    <color name="divider">#22FFFFFF</color>
+    <color name="text_secondary">#8892A6</color>
+    <color name="text_tertiary">#5C6678</color>
+    <color name="online_green">#00C48C</color>
+    <color name="offline_gray">#7A8293</color>
+    <color name="alarm_red">#F31260</color>
+    <color name="ptz_btn">#242A34</color>
+    <color name="divider">#1A2A3A55</color>
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
+    <color name="chip_bg">#2A2F38</color>
+    <color name="ptz_center">#2C3442</color>
+    <color name="text_disabled">#4A5264</color>
 </resources>

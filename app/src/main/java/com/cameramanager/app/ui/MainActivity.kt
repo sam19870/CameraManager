@@ -1,10 +1,8 @@
 package com.cameramanager.app.ui
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
+import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -18,14 +16,16 @@ import com.cameramanager.app.ui.playback.PlaybackActivity
 import com.cameramanager.app.ui.preview.PreviewActivity
 import com.cameramanager.app.ui.scan.DeviceScanActivity
 import com.cameramanager.app.ui.settings.AlarmLogActivity
+import com.cameramanager.app.ui.settings.AppSettingsActivity
 import com.cameramanager.app.ui.settings.SettingsActivity
 import com.cameramanager.app.util.PermissionHelper
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Home screen: multi-device centralized management list. Tap a device to open the
- * real-time preview; long-press for management actions (settings, playback, delete).
+ * Home screen with bottom navigation: 首页(devices), 回放, 消息, 设置.
+ * Tap a device to open the real-time preview; long-press for management actions.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -57,16 +57,42 @@ class MainActivity : AppCompatActivity() {
             refreshOnlineStatus()
         }
 
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> true
+                R.id.nav_playback -> {
+                    // If there's at least one device, open playback for the first one;
+                    // otherwise show a hint
+                    val devices = viewModel.devices.value
+                    if (devices.isNotEmpty()) {
+                        startActivity(PlaybackActivity.intent(this, devices[0].id))
+                    } else {
+                        android.widget.Toast.makeText(this,
+                            "请先添加摄像头", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+                R.id.nav_alarms -> {
+                    startActivity(Intent(this, AlarmLogActivity::class.java))
+                    true
+                }
+                R.id.nav_settings -> {
+                    startActivity(AppSettingsActivity.intent(this))
+                    true
+                }
+                else -> false
+            }
+        }
+
         lifecycleScope.launch {
             viewModel.devices.collectLatest {
                 adapter.submit(it)
                 binding.swipe.isRefreshing = false
-                binding.emptyState.visibility = if (it.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+                binding.emptyState.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
             }
         }
 
         PermissionHelper.request(this, PermissionHelper.PREVIEW_PERMISSIONS, PermissionHelper.REQ_PREVIEW)
-        // start background detection so alarms are pushed even when app is closed
         MotionDetectionService.start(this)
     }
 
@@ -106,19 +132,5 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("删除") { _, _ -> viewModel.delete(device) }
             .setNegativeButton("取消", null)
             .show()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.action_alarms -> startActivity(Intent(this, AlarmLogActivity::class.java))
-            R.id.action_multi -> startActivity(Intent(this, MultiPreviewActivity::class.java))
-            R.id.action_tunnel -> startActivity(com.cameramanager.app.ui.tunnel.TunnelManageActivity.intent(this))
-        }
-        return true
     }
 }

@@ -75,4 +75,6 @@ class SettingsViewModel(private val repo: Repository) : ViewModel() {
         viewModelScope.launch { repo.deleteRule(rule) }
 
     fun acknowledgeAlarm(id: Long) = viewModelScope.launch { repo.acknowledgeAlarm(id) }
+
+    fun deleteDevice(id: Long) = viewModelScope.launch { repo.deleteDevice(id) }
 }

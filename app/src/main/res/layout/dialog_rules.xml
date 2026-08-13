@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="8dp"
+    android:minHeight="320dp">
+
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerRules"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:overScrollMode="never"
+        android:minHeight="200dp"/>
+
+    <com.google.android.material.button.MaterialButton android:id="@+id/btnAddRule"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:cornerRadius="20dp"
+        android:backgroundTint="@color/brand_primary"
+        android:textColor="@color/white"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/white"
+        android:text="新建侦测规则"/>
+</LinearLayout>

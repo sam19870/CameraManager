@@ -2,7 +2,9 @@ package com.cameramanager.app.ui.preview
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -11,21 +13,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.cameramanager.app.CameraApp
 import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.databinding.ActivityPreviewBinding
 import com.cameramanager.app.net.NetworkRouter
 import com.cameramanager.app.net.NetworkRouter.RouteResult
 import com.cameramanager.app.rtsp.RtspPlayer
+import com.cameramanager.app.service.CameraStreamService
 import com.cameramanager.app.service.FloatingWindowService
 import com.cameramanager.app.ui.DeviceViewModelFactory
 import com.cameramanager.app.ui.PreviewViewModel
-import com.cameramanager.app.ui.detection.DetectionRegionActivity
-import com.cameramanager.app.ui.manage.DeviceManageActivity
+import com.cameramanager.app.ui.settings.SettingsActivity
 import com.cameramanager.app.ui.voice.VoiceIntercomActivity
 import com.cameramanager.app.util.PermissionHelper
 import com.cameramanager.app.util.PtzDirection
 import com.cameramanager.app.util.StorageHelper
+import com.cameramanager.app.vendor.ApiResult
+import com.cameramanager.app.vendor.CameraCapabilities
 import com.cameramanager.app.vendor.CameraController
+import com.cameramanager.app.vendor.CameraVendorApi
 import com.cameramanager.app.vendor.Preset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -33,26 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Real-time preview screen.
- *
- * Capabilities:
- *  - HD RTSP preview with switchable resolution profile (HD / SD / smooth).
- *  - PTZ: 8-direction + zoom, press-hold to move, release to stop; preset
- *    viewpoints, one-key home, auto-cruise, AI human tracking.
- *  - Picture: flip / mirror, night-vision mode, privacy mask.
- *  - Real-time screenshot and manual local recording; floating window preview.
- *  - One-tap deterrence (white light + siren) and voice intercom entry.
- *  - Custom detection region drawing, device management (restart/firmware/self-check).
- *
- * 连接选路与防卡死（v2 新增）：
- *  - 进入预览前先调用 [NetworkRouter.resolve] 根据「当前 WiFi SSID」决定走
- *    内网 / 公网 / 穿透，并把命中的 host:port 交给 [RtspPlayer]。
- *  - 顶部显示当前路由标签（内网·xxx / 穿透·xxx / 公网·xxx）。
- *  - 播放超时/卡死时 [RtspPlayer] 会自动重连 3 次，仍失败则弹「重连」按钮，
- *    避免无脑重试把 App 卡死；用户点「重连」可手动恢复。
- *
- * All advanced operations route through [CameraController] which returns a
- * capability-aware result so unsupported features prompt the user.
+ * 全屏沉浸式实时预览（参考乐橙 / TP-Link App）。
  */
 class PreviewActivity : AppCompatActivity() {
 
@@ -61,20 +48,27 @@ class PreviewActivity : AppCompatActivity() {
     private lateinit var player: RtspPlayer
     private var device: Device? = null
     private var controller: CameraController? = null
+    private var caps: CameraCapabilities? = null
     private var recording = false
     private var recordingStart = 0L
     private var presets: List<Preset> = emptyList()
-    /** 最近一次选路结果，用于重连时复用同一地址。 */
     private var currentRoute: RouteResult? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+        }
+
         binding = ActivityPreviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        // 读取 WiFi SSID 需要精确定位权限，没有就无法判断是否在设备内网。
         PermissionHelper.request(this, PermissionHelper.ROUTE_PERMISSIONS, PermissionHelper.REQ_ROUTE)
 
         player = RtspPlayer(this).apply {
@@ -93,6 +87,7 @@ class PreviewActivity : AppCompatActivity() {
                 override fun onReconnecting(attempt: Int, max: Int) {
                     runOnUiThread {
                         binding.reconnectOverlay.visibility = View.VISIBLE
+                        binding.reconnectProgress.visibility = View.VISIBLE
                         binding.reconnectHint.text = "网络异常，重连中($attempt/$max)…"
                         binding.btnReconnect.visibility = View.GONE
                         refreshTimeoutBadge()
@@ -101,7 +96,8 @@ class PreviewActivity : AppCompatActivity() {
                 override fun onStalled(timeoutCount: Int, lastError: String) {
                     runOnUiThread {
                         binding.reconnectOverlay.visibility = View.VISIBLE
-                        binding.reconnectHint.text = "$lastError\n已停止自动重连，点击下方按钮手动恢复"
+                        binding.reconnectProgress.visibility = View.GONE
+                        binding.reconnectHint.text = "$lastError\n已停止自动重连，点击手动恢复"
                         binding.btnReconnect.visibility = View.VISIBLE
                         refreshTimeoutBadge()
                     }
@@ -109,12 +105,15 @@ class PreviewActivity : AppCompatActivity() {
             }
         }
 
+        binding.btnBack.setOnClickListener { finish() }
+        binding.btnMore.setOnClickListener {
+            device?.let { startActivity(SettingsActivity.intent(this, it.id)) }
+        }
         binding.btnReconnect.setOnClickListener {
             binding.reconnectOverlay.visibility = View.GONE
             player.manualReconnect()
         }
 
-        setupSurface()
         setupControls()
         viewModel.load(intent.getLongExtra(EXTRA_DEVICE_ID, -1))
 
@@ -127,34 +126,38 @@ class PreviewActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupSurface() {
-        binding.surface.holder.addCallback(object : android.view.SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-                device?.let { startPlayback(it) }
-            }
-            override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, w: Int, h: Int) {}
-            override fun surfaceDestroyed(holder: android.view.SurfaceHolder) { player.stop() }
-        })
-    }
-
     private fun bindDevice(dev: Device) {
         val first = device == null
         device = dev
-        binding.toolbar.title = dev.name
+        binding.titleText.text = dev.name
         binding.profileText.text = dev.profileLabel()
-        binding.ptzPanel.visibility = if (dev.supportsPtz) View.VISIBLE else View.GONE
-        binding.btnAudio.visibility = if (dev.supportsAudio) View.VISIBLE else View.GONE
+        applyVisibilityByDevice(dev)
         applyTransform()
         if (first) {
             lifecycleScope.launch {
-                controller = CameraController(dev).also { it.refreshCapabilities() }
+                controller = CameraController(dev).also {
+                    caps = it.refreshCapabilities()
+                    runOnUiThread { applyVisibilityByCaps(caps) }
+                }
             }
+            binding.videoLayout.post { startPlayback(dev) }
+        } else {
+            startPlayback(dev)
         }
-        if (!first) startPlayback(dev)
+    }
+
+    private fun applyVisibilityByDevice(d: Device) {
+        binding.ptzPanel.visibility = if (d.supportsPtz) View.VISIBLE else View.GONE
+        binding.btnAudio.visibility = if (d.supportsAudio) View.VISIBLE else View.GONE
+    }
+
+    private fun applyVisibilityByCaps(c: CameraCapabilities?) {
+        if (c == null) return
+        binding.ptzPanel.visibility = if (c.ptz) View.VISIBLE else View.GONE
+        binding.btnAudio.visibility = if (c.voiceIntercom) View.VISIBLE else View.GONE
     }
 
     private fun startPlayback(dev: Device) {
-        if (!binding.surface.holder.isCreating) return
         binding.routeText.text = "选路中…"
         binding.reconnectOverlay.visibility = View.GONE
         refreshTimeoutBadge()
@@ -162,9 +165,8 @@ class PreviewActivity : AppCompatActivity() {
             val route = withContext(Dispatchers.IO) { NetworkRouter.resolve(this@PreviewActivity, dev) }
             currentRoute = route
             binding.routeText.text = routeLabel(route)
-            // 用选路后的 host:port 拼 RTSP URL；用户名/密码/路径仍取自设备配置。
             val url = dev.rtspUrl(useHost = route.host, usePort = route.rtspPort)
-            player.play(binding.surface, url, dev.streamProfile)
+            player.play(binding.videoLayout, url, dev.streamProfile)
         }
     }
 
@@ -175,7 +177,8 @@ class PreviewActivity : AppCompatActivity() {
             NetworkRouter.RouteType.PUBLIC -> "公网"
         }
         val suffix = if (!route.reachable) " · 不可达" else ""
-        return "$tag·${route.label.substringAfter('·', route.label)}$suffix"
+        val short = route.label.substringAfter('·', route.label)
+        return "$tag·$short$suffix"
     }
 
     private fun refreshTimeoutBadge() {
@@ -190,66 +193,82 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun applyTransform() {
         val dev = device ?: return
-        val view = binding.surface
-        view.scaleX = if (dev.mirrored) -1f else 1f
-        view.rotation = dev.rotation.toFloat()
-        view.pivotX = view.width / 2f
-        view.pivotY = view.height / 2f
+        val v = binding.videoLayout
+        v.scaleX = if (dev.mirrored) -1f else 1f
+        v.rotation = dev.rotation.toFloat()
+        v.pivotX = v.width / 2f; v.pivotY = v.height / 2f
+    }
+
+    private fun tap(v: View, action: () -> Unit) {
+        v.setOnClickListener {
+            v.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            action()
+        }
+    }
+
+    private fun pressHold(v: View, onDown: suspend (CameraController) -> Unit, onUp: suspend (CameraController) -> Unit) {
+        v.setOnTouchListener { _, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    lifecycleScope.launch { controller?.let { onDown(it) } }
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    lifecycleScope.launch { controller?.let { onUp(it) } }
+                }
+            }
+            true
+        }
     }
 
     private fun setupControls() {
-        binding.btnProfile.setOnClickListener { showProfilePicker() }
-        binding.btnRotate.setOnClickListener { viewModel.updateRotation((device?.rotation ?: 0) + 90) }
-        binding.btnMirror.setOnClickListener { viewModel.toggleMirror() }
-        binding.btnSnapshot.setOnClickListener { captureSnapshot() }
-        binding.btnRecord.setOnClickListener { toggleRecording() }
-        binding.btnDeterrence.setOnClickListener { exec { it.triggerSiren(true) } }
-        binding.btnAudio.setOnClickListener {
+        tap(binding.btnSnapshot) { captureSnapshot() }
+        tap(binding.btnRecord) { toggleRecording() }
+        tap(binding.btnAudio) {
             device?.let { startActivity(VoiceIntercomActivity.intent(this, it.id)) }
         }
+        tap(binding.btnProfile) { showProfilePicker() }
+        tap(binding.btnMoreTools) { showMoreTools() }
+        tap(binding.btnPreset) { showPresetPicker() }
+        tap(binding.btnCruise) { exec { it.toggleCruise() } }
 
-        // PTZ directions: press to move, release to stop
-        val ptzMap = mapOf(
-            binding.ptzUp to PtzDirection.UP,
-            binding.ptzDown to PtzDirection.DOWN,
-            binding.ptzLeft to PtzDirection.LEFT,
-            binding.ptzRight to PtzDirection.RIGHT,
-            binding.ptzLeftUp to PtzDirection.LEFT_UP,
-            binding.ptzRightUp to PtzDirection.RIGHT_UP,
-            binding.ptzLeftDown to PtzDirection.LEFT_DOWN,
-            binding.ptzRightDown to PtzDirection.RIGHT_DOWN,
-            binding.ptzZoomIn to PtzDirection.ZOOM_IN,
-            binding.ptzZoomOut to PtzDirection.ZOOM_OUT
-        )
-        ptzMap.forEach { (view, dir) ->
-            view.setOnTouchListener { _, event ->
-                when (event.action) {
-                    android.view.MotionEvent.ACTION_DOWN -> exec { it.move(dir.pan, dir.tilt, dir.zoom) }
-                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> exec { it.stop() }
-                }
-                true
-            }
-        }
-
-        // Extended controls row
-        binding.btnPreset.setOnClickListener { showPresetPicker() }
-        binding.btnHome.setOnClickListener { exec { it.home() } }
-        binding.btnCruise.setOnClickListener { exec { it.toggleCruise() } }
-        binding.btnAutoTrack.setOnClickListener { exec { it.toggleAutoTrack() } }
-        binding.btnNight.setOnClickListener { showNightVisionPicker() }
-        binding.btnPrivacy.setOnClickListener { exec { it.setPrivacyMask(!(device?.privacyMask ?: false)) } }
-        binding.btnWhiteLight.setOnClickListener { exec { it.setWhiteLight(true) } }
-        binding.btnSiren.setOnClickListener { exec { it.triggerSiren(true) } }
-        binding.btnFloating.setOnClickListener { openFloatingWindow() }
-        binding.btnManage.setOnClickListener {
-            device?.let { startActivity(DeviceManageActivity.intent(this, it.id)) }
-        }
+        pressHold(binding.ptzUp,
+            { it.move(0f, PtzDirection.UP.tilt) }, { it.stop() })
+        pressHold(binding.ptzDown,
+            { it.move(0f, PtzDirection.DOWN.tilt) }, { it.stop() })
+        pressHold(binding.ptzLeft,
+            { it.move(PtzDirection.LEFT.pan, 0f) }, { it.stop() })
+        pressHold(binding.ptzRight,
+            { it.move(PtzDirection.RIGHT.pan, 0f) }, { it.stop() })
+        pressHold(binding.ptzZoomIn,
+            { it.move(0f, 0f, PtzDirection.ZOOM_IN.zoom) }, { it.stop() })
+        pressHold(binding.ptzZoomOut,
+            { it.move(0f, 0f, PtzDirection.ZOOM_OUT.zoom) }, { it.stop() })
     }
 
     private fun showProfilePicker() {
         val labels = arrayOf("高清(主码流)", "标清(子码流)", "流畅")
-        AlertDialog.Builder(this).setTitle("选择分辨率")
+        AlertDialog.Builder(this).setTitle("选择清晰度")
             .setItems(labels) { _, which -> viewModel.setStreamProfile(which) }.show()
+    }
+
+    private fun showMoreTools() {
+        val items = mutableListOf<CharSequence>()
+        val actions = mutableListOf<() -> Unit>()
+        val c = caps
+
+        items.add("一键复位"); actions.add { exec { it.home() } }
+        if (c?.autoTrack == true) { items.add("AI追踪"); actions.add { exec { it.toggleAutoTrack() } } }
+        if (c?.nightVision == true) { items.add("夜视模式"); actions.add { showNightVisionPicker() } }
+        if (c?.privacyMask == true) { items.add("隐私遮蔽"); actions.add { exec { it.setPrivacyMask(!(device?.privacyMask ?: false)) } } }
+        if (c?.whiteLight == true) { items.add("白光灯"); actions.add { exec { it.setWhiteLight(true) } } }
+        if (c?.siren == true) { items.add("声光威慑"); actions.add { exec { it.triggerSiren(true) } } }
+        items.add("悬浮窗预览"); actions.add { openFloatingWindow() }
+        items.add("画面旋转"); actions.add { viewModel.updateRotation((device?.rotation ?: 0) + 90) }
+        items.add("镜像翻转"); actions.add { viewModel.toggleMirror() }
+
+        AlertDialog.Builder(this).setTitle("更多功能")
+            .setItems(items.toTypedArray()) { _, i -> actions[i]() }.show()
     }
 
     private fun showNightVisionPicker() {
@@ -260,12 +279,11 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun showPresetPicker() {
         val dev = device ?: return
-        val controller = controller ?: return
         lifecycleScope.launch {
             val list = withContext(Dispatchers.IO) {
-                com.cameramanager.app.vendor.CameraVendorApi.forDevice(dev).listPresets(dev)
+                CameraVendorApi.forDevice(dev).listPresets(dev)
             }
-            val data = (list as? com.cameramanager.app.vendor.ApiResult.Success)?.data ?: emptyList()
+            val data = (list as? ApiResult.Success)?.data ?: emptyList()
             presets = data
             val items = data.map { "${it.index}. ${it.name}" }.toTypedArray()
             AlertDialog.Builder(this@PreviewActivity).setTitle("预置位")
@@ -287,15 +305,15 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun captureSnapshot() {
-        val bmp = player.captureFrame(binding.surface) ?: run {
-            Toast.makeText(this, "截图失败", Toast.LENGTH_SHORT).show(); return
+        val bmp = player.captureFrame() ?: run {
+            Toast.makeText(this, "截图失败（libVLC暂不支持此机型）", Toast.LENGTH_SHORT).show(); return
         }
         val path = StorageHelper.saveScreenshot(this, bmp, device?.name ?: "camera")
         Toast.makeText(this, if (path != null) "已保存截图" else "保存失败", Toast.LENGTH_SHORT).show()
         if (path != null) {
             val dev = device ?: return
             lifecycleScope.launch {
-                com.cameramanager.app.CameraApp.get().repository.addRecording(
+                CameraApp.get().repository.addRecording(
                     com.cameramanager.app.data.model.Recording(
                         deviceId = dev.id, startTime = System.currentTimeMillis(),
                         endTime = System.currentTimeMillis(), trigger = "snapshot", filePath = path
@@ -310,7 +328,7 @@ class PreviewActivity : AppCompatActivity() {
             recording = false
             binding.btnRecord.text = "录像"
             binding.recordIndicator.visibility = View.GONE
-            com.cameramanager.app.service.CameraStreamService.stop(this)
+            CameraStreamService.stop(this)
             addRecordingEntry()
             Toast.makeText(this, "已停止录像", Toast.LENGTH_SHORT).show()
         } else {
@@ -318,7 +336,7 @@ class PreviewActivity : AppCompatActivity() {
             recordingStart = System.currentTimeMillis()
             binding.btnRecord.text = "停止"
             binding.recordIndicator.visibility = View.VISIBLE
-            com.cameramanager.app.service.CameraStreamService.start(this, recording = true)
+            CameraStreamService.start(this, recording = true)
             Toast.makeText(this, "开始本地录像", Toast.LENGTH_SHORT).show()
         }
     }
@@ -326,7 +344,7 @@ class PreviewActivity : AppCompatActivity() {
     private fun addRecordingEntry() {
         val dev = device ?: return
         lifecycleScope.launch {
-            com.cameramanager.app.CameraApp.get().repository.addRecording(
+            CameraApp.get().repository.addRecording(
                 com.cameramanager.app.data.model.Recording(
                     deviceId = dev.id, startTime = recordingStart,
                     endTime = System.currentTimeMillis(), trigger = "manual",
@@ -345,14 +363,12 @@ class PreviewActivity : AppCompatActivity() {
             Toast.makeText(this, "请先授予悬浮窗权限", Toast.LENGTH_LONG).show()
             return
         }
-        // 悬浮窗也走同一选路结果，保证内外网一致。
         val url = if (route != null) dev.rtspUrl(useHost = route.host, usePort = route.rtspPort)
                   else dev.rtspUrl()
         FloatingWindowService.start(this, url)
         Toast.makeText(this, "已开启悬浮窗预览", Toast.LENGTH_SHORT).show()
     }
 
-    /** Run a controller action on IO and toast the result. */
     private fun exec(action: suspend (CameraController) -> CameraController.CameraCommandResult) {
         val c = controller ?: run { Toast.makeText(this, "正在连接设备…", Toast.LENGTH_SHORT).show(); return }
         lifecycleScope.launch {
@@ -369,13 +385,25 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun stateLabel(state: RtspPlayer.State): String = when (state) {
         RtspPlayer.State.IDLE -> "空闲"
-        RtspPlayer.State.OPENING -> "正在打开…"
+        RtspPlayer.State.OPENING -> "连接中…"
         RtspPlayer.State.BUFFERING -> "缓冲中…"
-        RtspPlayer.State.PLAYING -> "播放中"
+        RtspPlayer.State.PLAYING -> "在线"
         RtspPlayer.State.PAUSED -> "已暂停"
         RtspPlayer.State.STOPPED -> "已停止"
         RtspPlayer.State.ENDED -> "已结束"
-        RtspPlayer.State.ERROR -> "播放错误"
+        RtspPlayer.State.ERROR -> "连接失败"
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }

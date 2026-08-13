@@ -83,6 +83,7 @@
         <activity android:name=".ui.manage.DeviceManageActivity" />
         <activity android:name=".ui.detection.DetectionRegionActivity" />
         <activity android:name=".ui.tunnel.TunnelManageActivity" />
+        <activity android:name=".ui.settings.AppSettingsActivity" />
 
         <service
             android:name=".service.CameraStreamService"

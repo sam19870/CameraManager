@@ -6,58 +6,254 @@
 
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+        android:background="@color/bg_dark" app:titleTextColor="@color/white"
+        app:title="@string/device_manage"
+        app:navigationIcon="@drawable/ic_back_white"/>
 
     <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1" android:clipToPadding="false"
+        android:paddingBottom="24dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:padding="16dp">
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:padding="12dp"
-                android:background="@drawable/bg_card_rounded" android:gravity="center_vertical"
-                android:layout_marginBottom="16dp">
-                <View android:layout_width="40dp" android:layout_height="40dp"
-                    android:background="@drawable/ic_camera"/>
-                <TextView android:id="@+id/deviceInfo"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:layout_marginStart="12dp"
-                    android:textColor="@color/text_primary" android:textSize="14sp"/>
+            <!-- ===== 设备信息卡片 ===== -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                app:cardElevation="0dp" app:strokeWidth="0dp"
+                android:layout_marginBottom="18dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="52dp" android:layout_height="52dp"
+                        app:cardCornerRadius="14dp" app:cardElevation="0dp"
+                        app:strokeWidth="0dp"
+                        app:cardBackgroundColor="@color/brand_primary">
+                        <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+                            android:src="@drawable/ic_camera"
+                            android:padding="12dp"
+                            android:contentDescription="camera"/>
+                    </com.google.android.material.card.MaterialCardView>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+                        <TextView android:id="@+id/tvDeviceName"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:textColor="@color/text_primary" android:textSize="16sp"
+                            android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
+                        <TextView android:id="@+id/tvDeviceAddr"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"
+                            android:layout_marginTop="2dp"/>
+                        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:orientation="horizontal" android:layout_marginTop="6dp"
+                            android:gravity="center_vertical">
+                            <ImageView android:layout_width="10dp" android:layout_height="10dp"
+                                android:src="@drawable/dot_online"
+                                android:contentDescription="dot"/>
+                            <TextView android:id="@+id/tvVendor"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:textColor="@color/text_secondary" android:textSize="11sp"
+                                android:layout_marginStart="5dp"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                    <TextView android:id="@+id/tvCapStatus"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="能力探测中…" android:textColor="@color/brand_accent"
+                        android:textSize="11sp" android:paddingHorizontal="10dp"
+                        android:paddingVertical="5dp" android:background="@drawable/bg_card_rounded"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ===== 分组：云台 & 巡航 ===== -->
+            <LinearLayout android:id="@+id/groupPtz"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:visibility="gone"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_ptz"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowPresets"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowCruise"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row_switch"
+                            android:id="@+id/includeRowAutoTrack"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="侦测规则" android:textColor="@color/text_secondary"
-                android:layout_marginBottom="8dp"/>
-            <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerRules"
+            <!-- ===== 分组：图像 & 画面 ===== -->
+            <LinearLayout android:id="@+id/groupImage"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false" android:layout_marginBottom="16dp"/>
+                android:orientation="vertical"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_image"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowNightVision"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row_switch"
+                            android:id="@+id/includeRowPrivacyMask"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowRotate"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowResolution"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <Button android:id="@+id/btnAddRule"
+            <!-- ===== 分组：音视频 & 对讲 ===== -->
+            <LinearLayout android:id="@+id/groupAv"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/ActionButton" android:layout_marginBottom="8dp"
-                android:text="@string/add_rule"/>
+                android:orientation="vertical" android:visibility="gone"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_av"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowVoiceCall"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowVoiceMsg"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <Button android:id="@+id/btnAlarmLog"
+            <!-- ===== 分组：灯光 & 威慑 ===== -->
+            <LinearLayout android:id="@+id/groupLight"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/ActionButton" android:layout_marginBottom="8dp"
-                android:text="@string/alarm_log"/>
+                android:orientation="vertical" android:visibility="gone"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_light"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row_switch"
+                            android:id="@+id/includeRowWhiteLight"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row_switch"
+                            android:id="@+id/includeRowSiren"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <Button android:id="@+id/btnDetectionRegion"
+            <!-- ===== 分组：智能侦测 ===== -->
+            <LinearLayout android:id="@+id/groupDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/ActionButton" android:layout_marginBottom="8dp"
-                android:text="自定义侦测区域"/>
+                android:orientation="vertical"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_detect"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowRules"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowRegion"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowAlarmLog"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row_switch"
+                            android:id="@+id/includeRowNotify"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <Button android:id="@+id/btnRoute"
+            <!-- ===== 分组：存储 & 录像 ===== -->
+            <LinearLayout android:id="@+id/groupStorage"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/ActionButton" android:layout_marginBottom="8dp"
-                android:text="@string/route_setting"/>
+                android:orientation="vertical" android:visibility="gone"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_storage"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowRecordMode"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowTfCard"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchNotify"
+            <!-- ===== 分组：网络 & 穿透 ===== -->
+            <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="异常事件消息推送" android:textColor="@color/text_primary"
-                android:layout_marginTop="8dp"/>
+                android:orientation="vertical"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_network"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowRoute"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- ===== 分组：设备管理 ===== -->
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="18dp">
+                <TextView style="@style/SectionTitle" android:text="@string/section_device"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_card" app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowFirmware"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowReboot"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowSelfCheck"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowDeviceInfo"/>
+                        <View style="@style/DividerLine"/>
+                        <include layout="@layout/item_setting_row"
+                            android:id="@+id/includeRowDelete"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

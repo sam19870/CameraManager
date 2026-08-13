@@ -20,9 +20,12 @@ class Repository(private val db: AppDatabase) {
     suspend fun addDevice(device: Device): Long = db.deviceDao().insert(device)
     suspend fun updateDevice(device: Device) = db.deviceDao().update(device)
     suspend fun deleteDevice(device: Device) {
-        db.deviceDao().delete(device)
-        // cascade cleanup of rules
-        db.detectionRuleDao().getActiveForDevice(device.id).forEach {
+        deleteDevice(device.id)
+    }
+
+    suspend fun deleteDevice(deviceId: Long) {
+        db.deviceDao().getById(deviceId)?.let { db.deviceDao().delete(it) }
+        db.detectionRuleDao().getActiveForDevice(deviceId).forEach {
             db.detectionRuleDao().delete(it)
         }
     }

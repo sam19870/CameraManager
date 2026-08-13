@@ -20,6 +20,7 @@ import androidx.core.app.NotificationCompat
 import com.cameramanager.app.R
 import com.cameramanager.app.rtsp.RtspPlayer
 import com.cameramanager.app.ui.MainActivity
+import org.videolan.libvlc.util.VLCVideoLayout
 
 /**
  * Floating-window (悬浮窗) preview service. Renders a small draggable RTSP tile
@@ -50,7 +51,7 @@ class FloatingWindowService : Service() {
     private fun showFloating(url: String) {
         removeFloating()
         val view = LayoutInflater.from(this).inflate(R.layout.window_floating, null)
-        val surface = view.findViewById<android.view.SurfaceView>(R.id.floatSurface)
+        val surface = view.findViewById<VLCVideoLayout>(R.id.floatSurface)
         val closeBtn = view.findViewById<android.widget.ImageView>(R.id.floatClose)
         val expandBtn = view.findViewById<android.widget.ImageView>(R.id.floatExpand)
 
@@ -100,15 +101,9 @@ class FloatingWindowService : Service() {
             removeFloating(); stopSelf()
         }
 
-        // Start streaming
+        // Start streaming — VLCVideoLayout manages its own surface lifecycle
         player = RtspPlayer(this)
-        surface.holder.addCallback(object : android.view.SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-                player?.play(surface, url, RtspPlayer.PROFILE_SD)
-            }
-            override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, w: Int, h: Int) {}
-            override fun surfaceDestroyed(holder: android.view.SurfaceHolder) { player?.stop() }
-        })
+        surface.post { player?.play(surface, url, RtspPlayer.PROFILE_SD) }
     }
 
     private fun removeFloating() {
