@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 摄像头音视频参数设置页（所有参数均从摄像头探测读取，修改后写回） -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/bg_page">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@color/white" app:elevation="0dp">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+            app:title="音视频参数设置"
+            app:subtitle="参数从摄像头实时读取，修改后即时生效"
+            app:titleTextColor="@color/text_primary"
+            app:subtitleTextColor="@color/text_secondary"
+            app:navigationIcon="@drawable/ic_back_dark"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingTop="10dp" android:paddingBottom="40dp">
+
+            <!-- ====== 视频参数组 ====== -->
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="视频参数（录制与回放均按此设置，即原画画质）"
+                android:textSize="12sp" android:textColor="@color/text_secondary"
+                android:paddingHorizontal="16dp" android:paddingVertical="8dp"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardElevation="0dp" app:cardCornerRadius="0dp"
+                app:cardBackgroundColor="@color/white">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- 视频流开关 -->
+                    <include android:id="@+id/rowVideoEnabled" layout="@layout/item_setting_row_switch"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 视频编码 -->
+                    <include android:id="@+id/rowCodec" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 分辨率 -->
+                    <include android:id="@+id/rowResolution" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 帧率 -->
+                    <include android:id="@+id/rowFps" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 码率控制 -->
+                    <include android:id="@+id/rowRcMode" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 码率 -->
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp"
+                        android:background="?attr/selectableItemBackground">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:gravity="center_vertical">
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/text_primary" android:textSize="14sp"
+                                android:textStyle="bold" android:text="码率（越高画质越好，占用带宽越多）"/>
+                            <TextView android:id="@+id/tvBitrateValue"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:textColor="@color/brand_primary" android:textSize="13sp"
+                                android:textStyle="bold" android:text="4096 kbps"/>
+                        </LinearLayout>
+                        <SeekBar android:id="@+id/seekBitrate"
+                            android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:max="12" android:progress="6"
+                            android:progressTint="@color/brand_primary"
+                            android:thumbTint="@color/white" android:layout_marginTop="8dp"/>
+                    </LinearLayout>
+
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- I帧间隔 GOP -->
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:gravity="center_vertical">
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/text_primary" android:textSize="14sp"
+                                android:textStyle="bold" android:text="关键帧间隔（I帧 / GOP）"/>
+                            <TextView android:id="@+id/tvGopValue"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:textColor="@color/brand_primary" android:textSize="13sp"
+                                android:textStyle="bold" android:text="50 帧"/>
+                        </LinearLayout>
+                        <SeekBar android:id="@+id/seekGop"
+                            android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:max="40" android:progress="10"
+                            android:progressTint="@color/brand_primary"
+                            android:thumbTint="@color/white" android:layout_marginTop="8dp"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ====== 音频参数组 ====== -->
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="音频参数（决定录像/回放是否有声音，直播时是否有声）"
+                android:textSize="12sp" android:textColor="@color/text_secondary"
+                android:paddingHorizontal="16dp" android:paddingVertical="10dp"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:cardElevation="0dp" app:cardCornerRadius="0dp"
+                app:cardBackgroundColor="@color/white">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- 流类型：视频/音频/音视频 -->
+                    <include android:id="@+id/rowStreamType" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 音频流开关 -->
+                    <include android:id="@+id/rowAudioEnabled" layout="@layout/item_setting_row_switch"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 音频编码 -->
+                    <include android:id="@+id/rowAudioCodec" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 音频采样率 -->
+                    <include android:id="@+id/rowAudioSample" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 收音音量 -->
+                    <include android:id="@+id/rowMicVolume" layout="@layout/item_setting_seekbar"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+
+                    <!-- 扬声音量 -->
+                    <include android:id="@+id/rowSpkVolume" layout="@layout/item_setting_seekbar"/>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 底部保存按钮 -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:padding="14dp"
+                android:layout_marginTop="6dp">
+                <Button
+                    android:id="@+id/btnReset"
+                    android:layout_width="0dp" android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="10dp"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="重新读取摄像头"/>
+                <Button
+                    android:id="@+id/btnSave"
+                    android:layout_width="0dp" android:layout_height="46dp"
+                    android:layout_weight="1.2"
+                    style="?attr/materialButtonStyle"
+                    android:text="保存到摄像头"/>
+            </LinearLayout>
+
+            <TextView android:id="@+id/tvReadonlyHint"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp" android:paddingBottom="12dp"
+                android:textColor="#FFFF9800" android:textSize="12sp"
+                android:visibility="gone"
+                android:text="● 当前设备通过通用协议（ONVIF/乐橙）仅支持只读探测，\n  修改视频/音频参数请使用厂商官方App设置。"/>
+        </LinearLayout>
+    </ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

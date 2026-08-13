@@ -3,6 +3,8 @@ package com.cameramanager.app.ui.scan
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.Spanned
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
@@ -46,6 +48,12 @@ class AddDeviceActivity : AppCompatActivity() {
             intent.getIntExtra(EXTRA_PORT, 80).takeIf { it > 0 }?.let {
                 binding.editPort.setText(it.toString())
             }
+
+            // 让键盘默认弹出数字键盘（带 '.'），同时允许域名里的字母和 '-'。
+            // 实现：inputType=numberDecimal（显示数字键盘），叠加 InputFilter 允许字母/横杠/冒号。
+            val hostFilters = arrayOf<InputFilter>(HostInputFilter())
+            binding.editHost.filters = hostFilters
+            binding.editPort.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(5))
 
             binding.probeLog.movementMethod = ScrollingMovementMethod()
 
@@ -98,8 +106,18 @@ class AddDeviceActivity : AppCompatActivity() {
                 }
             }
             result.onSuccess { r ->
-                viewModel.add(r.device)
-                toast("已添加「${r.device.name}」·${if (r.rtspVerified) "RTSP已验证" else "已保存"}")
+                // 把探测得到的主/子码流路径一起写进 Device 入库，预览/回放就能按场景选码流
+                val saved = r.device.copy(
+                    mainRtspPath = r.mainRtspPath ?: r.device.mainRtspPath,
+                    subRtspPath = r.subRtspPath ?: r.device.subRtspPath
+                )
+                viewModel.add(saved)
+                val hint = buildString {
+                    append("已添加「${saved.name}」")
+                    if (r.rtspVerified) append("·码流已验证")
+                    if (!saved.mainRtspPath.isNullOrBlank()) append("·原画=${saved.mainRtspPath}")
+                }
+                toast(hint.take(44))
                 safeStart(
                     Intent(this@AddDeviceActivity, MainActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -132,5 +150,24 @@ class AddDeviceActivity : AppCompatActivity() {
             Intent(context, AddDeviceActivity::class.java)
                 .putExtra(EXTRA_HOST, host)
                 .putExtra(EXTRA_PORT, port)
+    }
+}
+
+/**
+ * 允许在 IP 输入框里输入：数字 . - : 字母（兼容域名），同时 inputType=numberDecimal
+ * 保证默认弹数字键盘（用户说的"自动锁定到数字键盘"）。
+ */
+private class HostInputFilter : InputFilter {
+    override fun filter(
+        source: CharSequence, start: Int, end: Int,
+        dest: Spanned, dstart: Int, dend: Int
+    ): CharSequence? {
+        for (i in start until end) {
+            val c = source[i]
+            val ok = c in '0'..'9' || c == '.' || c == '-' || c == ':' ||
+                    c in 'a'..'z' || c in 'A'..'Z'
+            if (!ok) return ""
+        }
+        return null
     }
 }

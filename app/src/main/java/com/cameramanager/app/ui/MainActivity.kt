@@ -129,7 +129,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_scan -> { safeStart(Intent(this, DeviceScanActivity::class.java)); true }
             R.id.action_multiscreen -> { safeStart(Intent(this, MultiPreviewActivity::class.java)); true }
             R.id.action_add -> { safeStart(Intent(this, AddDeviceActivity::class.java)); true }
             else -> super.onOptionsItemSelected(item)
@@ -160,13 +159,20 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
-    /** 下拉刷新：6 秒硬超时，任何情况 spinner 必停 */
+    /** 下拉刷新：6 秒硬超时，任何情况 spinner 必停。
+     *  在线判定：RTSP(d.port) / ONVIF(d.onvifPort) / 管理80 任一能通就算在线，
+     *  之前只打 d.port 遇到 RTSP 554 关但 HTTP 80 开 = 误判离线刷一下又在线的情况。
+     */
     private fun refreshOnlineStatus() {
         lifecycleScope.launch {
             withTimeoutOrNull(6000) {
                 runCatching {
                     viewModel.devices.value.forEach { d ->
-                        val reachable = com.cameramanager.app.net.NetworkScanner.testReachable(d.host, d.port, 800)
+                        val ports = listOf(d.port, d.onvifPort, 80, 554)
+                            .filter { it > 0 }.distinct()
+                        val reachable = ports.any { p ->
+                            com.cameramanager.app.net.NetworkScanner.testReachable(d.host, p, 700)
+                        }
                         viewModel.updateDevice(d.copy(online = reachable))
                     }
                 }.onFailure { t -> Log.w(TAG, "refresh failed: ${t.message}", t) }

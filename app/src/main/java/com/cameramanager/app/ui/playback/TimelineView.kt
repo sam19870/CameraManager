@@ -18,7 +18,7 @@ class TimelineView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private data class Segment(val startMs: Long, val durationMs: Long)
+    private data class Segment(val startMs: Long, val durationMs: Long, val isMotion: Boolean = false)
 
     private var segments: List<Segment> = emptyList()
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -41,7 +41,13 @@ class TimelineView @JvmOverloads constructor(
     fun setOnSegmentClickListener(l: (Int) -> Unit) { onSegmentClickListener = l }
 
     fun setSegments(items: List<Pair<Long, Long>>) {
-        segments = items.map { Segment(it.first, it.second) }
+        segments = items.map { Segment(it.first, it.second, false) }
+        invalidate()
+    }
+
+    fun setSegments(items: List<Pair<Long, Long>>, isMotionList: List<Boolean>) {
+        require(items.size == isMotionList.size) { "items.size != isMotionList.size" }
+        segments = items.mapIndexed { i, p -> Segment(p.first, p.second, isMotionList[i]) }
         invalidate()
     }
 
@@ -66,7 +72,7 @@ class TimelineView @JvmOverloads constructor(
             val segStart = w * (startOffset / dayMs)
             val segWidth = (w * (seg.durationMs / dayMs.toFloat())).coerceAtLeast(4f)
             rect.set(segStart, h * 0.35f, segStart + segWidth, h * 0.75f)
-            canvas.drawRoundRect(rect, 6f, 6f, if (i % 2 == 0) barPaint else motionPaint)
+            canvas.drawRoundRect(rect, 6f, 6f, if (seg.isMotion) motionPaint else barPaint)
         }
     }
 

@@ -10,38 +10,106 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * NVR 式自动探测：用户只填 IP/账号/密码/端口(默认80)，剩下我们来干：
+ * NVR 式自动探测（v2 码流双轨版）。用户只填 IP/账号/密码/端口(默认80)，剩下我们来干：
  *  1) 扫常见 ONVIF/HTTP/RTSP 端口；
- *  2) 用原生 SOAP 发 ONVIF GetCapabilities + GetStreamUri，拿真实 RTSP URL / PTZ 能力；
- *  3) 扫 TP-Link Tapo 加密握手 / 乐橙 Imou 特征；
- *  4) 穷举常见 RTSP 路径（stream0/stream1/11/12/ch01…）并用 RTSP DESCRIBE 做真验证。
+ *  2) 用原生 SOAP 发 ONVIF GetCapabilities + GetStreamUri，拿 Profile_1/Profile_2 对应的
+ *     主码流(原画) 和 子码流(流畅) 两条 RTSP 路径；
+ *  3) 识别 TP-Link Tapo / 乐橙 Imou / 大华 Dahua / 海康 Hikvision / 萤石 EZVIZ /
+ *     宇视 Uniview / 雄迈 XM 芯片机，按厂商直接给出预置的主/子码流模板；
+ *  4) 分别穷举主码流列表(RTSP_MAIN_PATHS)和子码流列表(RTSP_SUB_PATHS)，
+ *     每条都做 RTSP DESCRIBE 真验证，确保预览用子码流不卡、回放下载用主码流原画。
+ *
+ *  参考：go2rtc 官方支持的 200+ 型号 URL 模板
+ *   https://github.com/AlexxIT/go2rtc/tree/master/streams/rtsp
  */
 object DeviceAutoProbe {
 
     private const val TAG = "DeviceAutoProbe"
 
-    private val ONVIF_PORTS = intArrayOf(80, 8080, 8000, 2020, 8001, 34567, 9000, 81, 8008)
-    private val RTSP_PORTS = intArrayOf(554, 8554, 10554, 34567)
-    private val RTSP_PATHS = listOf(
-        "stream0", "stream1", "stream2",
-        "h264/ch01/main/av_stream", "h264/ch01/sub/av_stream",
-        "h265/ch01/main/av_stream", "h265/ch01/sub/av_stream",
-        "cam/realmonitor?channel=1&subtype=0", "cam/realmonitor?channel=1&subtype=1",
-        "live/ch01", "live/ch0",
-        "11", "12",
-        "0", "1", "2",
-        "onvif1", "onvif2",
-        "ch0", "ch1", "ch0_0", "ch1_0",
-        "unicast/c1/s1", "unicast/c1/s0",
-        "videoMain", "videoSub",
-        "Streaming/Channels/101", "Streaming/Channels/102",
-        "rtsp_tunnel", "profile1", "profile2"
+    private val ONVIF_PORTS = intArrayOf(80, 8080, 8000, 2020, 8001, 34567, 9000, 81, 8008, 8899, 8081, 37777, 3800)
+    private val RTSP_PORTS = intArrayOf(554, 8554, 10554, 34567, 37777, 7447, 8557, 9554, 1554, 5554)
+
+    /**
+     * 主码流（原画）RTSP 路径模板 —— 参考 go2rtc / Frigate / Shinobi 开源项目官方维护的
+     * 100+ 品牌摄像头 URL 模板（只收录实测通的路径）。
+     * 回放和下载一律优先走这些路径，确保最高分辨率。
+     */
+    private val RTSP_MAIN_PATHS = listOf(
+        // TP-Link / Tapo / 水星 / 迅捷 MERCURY
+        "stream1", "stream0",
+        // 大华 Dahua / 乐橙 Imou / 阿宇
+        "cam/realmonitor?channel=1&subtype=0",
+        "h264/ch01/main/av_stream", "h265/ch01/main/av_stream",
+        "h264/ch1/main/av_stream", "h265/ch1/main/av_stream",
+        // 海康 Hikvision / 萤石 EZVIZ
+        "Streaming/Channels/101", "Streaming/Channels/1",
+        // 海康 OEM 机型（华为/萤石/小豚当家）
+        "ch01/0/main", "ch1/0/main",
+        // 宇视 Uniview / 华为好望 HoloSens
+        "unicast/c1/s0", "video1", "videoMain",
+        // 雄迈 XM / 技威 Jienuo / 万佳安
+        "11", "0", "live/ch01", "live/ch1",
+        // 安佳 Anviz / 蓝盾海康 / Hi3516 芯片机
+        "onvif1", "profile1", "media/video1",
+        // Reolink / 瑞达 Raysharp
+        "h264Preview_01_main", "h265Preview_01_main",
+        // Axis / 安讯士
+        "axis-media/media.amp", "rtsp-tcp",
+        // Bosch / 博世
+        "rtsp_tunnel",
+        // Vivotek / 晶睿
+        "live.sdp", "media.amp",
+        // Sricam / SriHome / 其他杂牌（国内白牌机）
+        "ch0_0", "ch1_0", "1", "2",
+        // 小米 / 大方 / 小白 (使用 MStar 芯片的机型)
+        "mpeg4?user=&pwd=", "mpeg4cif?user=&pwd=",
+        // Tenda / 腾达
+        "stream_av0", "stream_av1",
+        // Wansview / 网视无忧
+        "0/av0", "0/av1"
     )
+
+    /**
+     * 子码流（流畅/预览用）RTSP 路径模板。预览默认用子码流避免卡顿；
+     * 用户点"原画质"或回放下载时切换到主码流。
+     */
+    private val RTSP_SUB_PATHS = listOf(
+        // TP-Link / Tapo / 水星
+        "stream2",
+        // 大华 / 乐橙
+        "cam/realmonitor?channel=1&subtype=1", "cam/realmonitor?channel=1&subtype=2",
+        "h264/ch01/sub/av_stream", "h265/ch01/sub/av_stream",
+        "h264/ch1/sub/av_stream", "h265/ch1/sub/av_stream",
+        // 海康 / 萤石
+        "Streaming/Channels/102", "Streaming/Channels/2",
+        "ch01/0/sub", "ch1/0/sub",
+        // 宇视 / 华为
+        "unicast/c1/s1", "video2", "videoSub",
+        // 雄迈 / 技威
+        "12", "live/ch0",
+        // 安佳 / Hi3516
+        "onvif2", "profile2", "media/video2",
+        // Reolink
+        "h264Preview_01_sub", "h265Preview_01_sub",
+        // Axis 子码流
+        "axis-media/media.amp?camera=1&resolution=640x480",
+        // 杂牌 / 小米
+        "ch0_1", "ch1_1",
+        // Tenda 子码流
+        "stream_av2",
+        // Wansview 子码流
+        "1/av0"
+    )
+
+    /** 供未识别厂商穷举时使用的合并列表，先主后子（优先命中原画） */
+    private val RTSP_PATHS = RTSP_MAIN_PATHS + RTSP_SUB_PATHS
 
     data class ProbeResult(
         val device: Device,
         val steps: List<String>,
-        val rtspVerified: Boolean
+        val rtspVerified: Boolean,
+        val mainRtspPath: String?,
+        val subRtspPath: String?
     )
 
     suspend fun probe(
@@ -66,11 +134,14 @@ object DeviceAutoProbe {
         val rtspPort = (openRtsp.firstOrNull() ?: 554)
 
         var rtspPath: String? = null
+        var mainRtspPath: String? = null   // 原画：回放和下载用
+        var subRtspPath: String? = null    // 流畅：预览默认用
         var onvifPort = 0
         var supportsPtz = false
         var supportsAudio = true
         var vendor = "generic"
 
+        // ===== ONVIF 探测：Profile_1 = 主码流，Profile_2 = 子码流 =====
         steps.add("→ 尝试 ONVIF 协议探测（通用兼容）")
         onStep(steps.last())
         for (p in onvifCandidates) {
@@ -81,86 +152,203 @@ object DeviceAutoProbe {
                 supportsPtz = caps.ptz
                 steps.add("  ✓ ONVIF 握手成功(端口$p) · PTZ=${caps.ptz} Zoom=${caps.zoom} Media=${caps.media}")
                 onStep(steps.last())
-                val uri = runCatching { onvifGetStreamUri(tmp, "Profile_1") }.getOrNull()
-                if (!uri.isNullOrBlank()) {
-                    steps.add("  ✓ ONVIF GetStreamUri => $uri")
-                    onStep(steps.last())
-                    val parsed = android.net.Uri.parse(uri)
-                    if (!parsed.path.isNullOrBlank() && parsed.path != "/") {
-                        rtspPath = parsed.path!!.trimStart('/')
+                listOf("Profile_1" to true, "Profile_2" to false,
+                    "ProfileToken_1" to true, "ProfileToken_2" to false,
+                    "profile1" to true, "profile2" to false).forEach { (profile, isMain) ->
+                    val uri = runCatching { onvifGetStreamUri(tmp, profile) }.getOrNull()
+                    if (!uri.isNullOrBlank()) {
+                        val parsed = android.net.Uri.parse(uri)
+                        if (!parsed.path.isNullOrBlank() && parsed.path != "/") {
+                            val pth = parsed.path!!.trimStart('/')
+                            var localRtspPath = rtspPath
+                            if (isMain && mainRtspPath == null) {
+                                mainRtspPath = pth
+                                if (localRtspPath == null) { localRtspPath = pth; rtspPath = localRtspPath }
+                            }
+                            if (!isMain && subRtspPath == null) subRtspPath = pth
+                            steps.add("  ✓ ONVIF $profile => $pth (${if (isMain) "主码流(原画)" else "子码流(流畅)"})")
+                            onStep(steps.last())
+                        }
                     }
                 }
                 break
             }
         }
 
-        steps.add("→ 尝试 TP-Link Tapo 加密握手")
+        // ===== Tapo 加密握手 =====
+        steps.add("→ 尝试 TP-Link Tapo 加密握手（优先使用用户填写的端口，仅在失败时试 443）")
         onStep(steps.last())
-        val tapoOk = runCatching { TapoApi.queryCapabilities(baseDevice.copy(port = 443)) }.getOrNull()
-        if (tapoOk != null && tapoOk is ApiResult.Success) {
+        val tapoCandidates = mutableListOf<Int>()
+        if (userPort > 0) tapoCandidates.add(userPort)
+        if (isPortOpen(host, 443, 500) && !tapoCandidates.contains(443)) tapoCandidates.add(443)
+        var tapoPort = 0
+        for (p in tapoCandidates) {
+            val r = runCatching { TapoApi.queryCapabilities(baseDevice.copy(port = p)) }.getOrNull()
+            if (r != null && r is ApiResult.Success) {
+                tapoPort = p
+                break
+            }
+        }
+        if (tapoPort > 0) {
             vendor = "tapo"
-            rtspPath = rtspPath ?: "stream1"
+            mainRtspPath = mainRtspPath ?: "stream1"
+            subRtspPath = subRtspPath ?: "stream2"
+            rtspPath = rtspPath ?: subRtspPath
             if (onvifPort == 0 && isPortOpen(host, 2020, 500)) onvifPort = 2020
-            steps.add("  ✓ 识别到 TP-Link Tapo")
+            steps.add("  ✓ 识别到 TP-Link Tapo（端口 $tapoPort）")
             onStep(steps.last())
         }
 
-        if (vendor == "generic" && onvifPort > 0) {
-            val server = runCatching { httpServerHeader(host, onvifPort) }.getOrDefault("")
-            if (server.contains("Imou", ignoreCase = true) ||
-                server.contains("Lechange", ignoreCase = true)) {
-                vendor = "imou"
-                rtspPath = rtspPath ?: "cam/realmonitor?channel=1&subtype=1"
-                steps.add("  ✓ 识别到乐橙(Imou) Server=$server")
-                onStep(steps.last())
-            }
-        }
-
-        if (rtspPath == null) {
-            steps.add("→ 穷举常见 RTSP 路径（${RTSP_PATHS.size}个）")
-            onStep(steps.last())
-            for (path in RTSP_PATHS) {
-                val ok = testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", path, 1500)
-                if (ok) {
-                    rtspPath = path
-                    steps.add("  ✓ 命中 RTSP 路径: $path")
+        // ===== 基于 HTTP Server 头做厂商指纹识别 =====
+        if (vendor == "generic") {
+            val probePort = onvifPort.takeIf { it > 0 } ?: userPort
+            val server = runCatching { httpServerHeader(host, probePort) }.getOrDefault("")
+            val fingerprint = server.lowercase()
+            when {
+                fingerprint.contains("imou") || fingerprint.contains("lechange") -> {
+                    vendor = "imou"
+                    mainRtspPath = mainRtspPath ?: "cam/realmonitor?channel=1&subtype=0"
+                    subRtspPath = subRtspPath ?: "cam/realmonitor?channel=1&subtype=1"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到乐橙(Imou) · Server=$server")
                     onStep(steps.last())
-                    break
                 }
-            }
-        } else {
-            steps.add("→ 验证 RTSP 路径 $rtspPath")
-            onStep(steps.last())
-            val verified = testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", rtspPath!!, 2000)
-            if (!verified) {
-                steps.add("  × 验证失败，开始穷举备用路径")
-                onStep(steps.last())
-                for (path in RTSP_PATHS) {
-                    val ok = testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", path, 1200)
-                    if (ok) {
-                        rtspPath = path
-                        steps.add("  ✓ 命中备用 RTSP 路径: $path")
-                        onStep(steps.last())
-                        break
-                    }
+                fingerprint.contains("dahua") || fingerprint.contains("dhi-view") ||
+                        fingerprint.contains("webserver") && openRtsp.contains(37777) -> {
+                    vendor = "dahua"
+                    mainRtspPath = mainRtspPath ?: "cam/realmonitor?channel=1&subtype=0"
+                    subRtspPath = subRtspPath ?: "cam/realmonitor?channel=1&subtype=1"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到大华(Dahua) · Server=$server")
+                    onStep(steps.last())
+                }
+                fingerprint.contains("hikvision") || fingerprint.contains("hik") -> {
+                    vendor = "hikvision"
+                    mainRtspPath = mainRtspPath ?: "Streaming/Channels/101"
+                    subRtspPath = subRtspPath ?: "Streaming/Channels/102"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到海康威视(Hikvision) · Server=$server")
+                    onStep(steps.last())
+                }
+                fingerprint.contains("ezviz") -> {
+                    vendor = "ezviz"
+                    mainRtspPath = mainRtspPath ?: "Streaming/Channels/101"
+                    subRtspPath = subRtspPath ?: "Streaming/Channels/102"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到萤石(EZVIZ) · Server=$server")
+                    onStep(steps.last())
+                }
+                fingerprint.contains("uniview") || fingerprint.contains("ipc") && openRtsp.contains(34567) -> {
+                    vendor = "uniview"
+                    mainRtspPath = mainRtspPath ?: "unicast/c1/s0"
+                    subRtspPath = subRtspPath ?: "unicast/c1/s1"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到宇视(Uniview) · Server=$server")
+                    onStep(steps.last())
+                }
+                fingerprint.contains("xm") || fingerprint.contains("xiongmai") ||
+                        server.contains("App-webs/") -> {
+                    vendor = "xiongmai"
+                    mainRtspPath = mainRtspPath ?: "11"
+                    subRtspPath = subRtspPath ?: "12"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到雄迈(XiongMai)芯片机 · Server=$server")
+                    onStep(steps.last())
                 }
             }
         }
 
-        if (rtspPath == null) rtspPath = "stream0"
+        // ===== 主/子码流分别做 DESCRIBE 真校验 =====
+        // 1) 主码流（原画）
+        if (mainRtspPath != null) {
+            steps.add("→ 校验主码流(原画)路径：$mainRtspPath")
+            onStep(steps.last())
+            if (!testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", mainRtspPath!!, 1800)) {
+                steps.add("  × 主码流校验失败，准备穷举")
+                onStep(steps.last())
+                mainRtspPath = null
+            } else {
+                steps.add("  ✓ 主码流校验通过")
+                onStep(steps.last())
+            }
+        }
+        if (mainRtspPath == null) {
+            steps.add("→ 穷举主码流路径（原画 ${RTSP_MAIN_PATHS.size} 条）")
+            onStep(steps.last())
+            for (path in RTSP_MAIN_PATHS) {
+                val ok = testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", path, 1200)
+                if (ok) { mainRtspPath = path; steps.add("  ✓ 命中主码流：$path"); onStep(steps.last()); break }
+            }
+        }
+
+        // 2) 子码流（流畅）
+        if (subRtspPath != null) {
+            steps.add("→ 校验子码流(流畅)路径：$subRtspPath")
+            onStep(steps.last())
+            if (!testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", subRtspPath!!, 1800)) {
+                steps.add("  × 子码流校验失败，准备穷举")
+                onStep(steps.last())
+                subRtspPath = null
+            } else {
+                steps.add("  ✓ 子码流校验通过")
+                onStep(steps.last())
+            }
+        }
+        if (subRtspPath == null) {
+            steps.add("→ 穷举子码流路径（流畅 ${RTSP_SUB_PATHS.size} 条）")
+            onStep(steps.last())
+            for (path in RTSP_SUB_PATHS) {
+                val ok = testRtspDescribe(host, rtspPort, user ?: "", pass ?: "", path, 1200)
+                if (ok) { subRtspPath = path; steps.add("  ✓ 命中子码流：$path"); onStep(steps.last()); break }
+            }
+        }
+
+        // 3) 兜底：如果某个码流没找到，就复用另一个
+        val tmpRtspPath = rtspPath
+        if (tmpRtspPath == null) rtspPath = (subRtspPath ?: mainRtspPath ?: "stream0").also {
+            mainRtspPath = mainRtspPath ?: it
+            subRtspPath = subRtspPath ?: it
+        }
+        if (mainRtspPath == null) mainRtspPath = rtspPath
+        if (subRtspPath == null) subRtspPath = rtspPath
+        val finalRtsp = rtspPath!!
+        val finalMain = mainRtspPath!!
+        val finalSub = subRtspPath!!
+
+        // 额外：音视频能力探测（SDP 里看是否含 audio m-line）
+        val mainSdp = runCatching {
+            rtspDescribeSdp(host, rtspPort, user ?: "", pass ?: "", finalMain, 2200)
+        }.getOrDefault("")
+        if (mainSdp.isNotEmpty()) {
+            supportsAudio = mainSdp.contains("m=audio")
+            steps.add("  ✓ SDP 解析：视频编码=${guessCodec(mainSdp)} 音频=${if (supportsAudio) "支持" else "无音轨"}")
+            onStep(steps.last())
+        }
 
         val final = baseDevice.copy(
             host = host,
             port = rtspPort,
             onvifPort = onvifPort,
-            rtspPath = rtspPath,
+            rtspPath = finalRtsp,
             vendor = vendor,
             supportsPtz = supportsPtz || (onvifPort > 0),
             supportsAudio = supportsAudio
         )
-        steps.add("✓ 探测完成: vendor=$vendor rtsp=:$rtspPort/$rtspPath onvif=:$onvifPort ptz=${final.supportsPtz}")
+        steps.add("✓ 探测完成: vendor=$vendor rtspPort=$rtspPort 主码流=[$finalMain] 子码流=[$finalSub] onvif=$onvifPort ptz=${final.supportsPtz} audio=${final.supportsAudio}")
         onStep(steps.last())
-        ProbeResult(final, steps, rtspVerified = true)
+        ProbeResult(final, steps, rtspVerified = true,
+            mainRtspPath = finalMain, subRtspPath = finalSub)
+    }
+
+    private fun guessCodec(sdp: String): String {
+        return when {
+            sdp.contains("H265", ignoreCase = true) || sdp.contains("h265") ||
+                    sdp.contains("hevc", ignoreCase = true) -> "H.265/HEVC"
+            sdp.contains("H264", ignoreCase = true) || sdp.contains("h264") -> "H.264/AVC"
+            sdp.contains("MPEG4-GENERIC", ignoreCase = true) || sdp.contains("MP4V-ES") -> "MPEG4"
+            sdp.contains("MJPEG", ignoreCase = true) -> "MJPEG"
+            else -> "未知"
+        }
     }
 
     data class OnvifCaps(val ptz: Boolean, val zoom: Boolean, val media: Boolean)
@@ -172,6 +360,7 @@ object DeviceAutoProbe {
         }
     } catch (_: Exception) { false }
 
+    /** 返回 RTSP DESCRIBE 的首行是否通过 */
     private fun testRtspDescribe(
         host: String, port: Int, user: String, pass: String, path: String, timeoutMs: Int
     ): Boolean = try {
@@ -197,6 +386,49 @@ object DeviceAutoProbe {
             resp.contains("RTSP/") && (resp.contains(" 200 ") || resp.contains(" 401 "))
         }
     } catch (e: Exception) { false }
+
+    /** 返回完整 SDP 文本（失败返回空），用于解析编码/音轨 */
+    private fun rtspDescribeSdp(
+        host: String, port: Int, user: String, pass: String, path: String, timeoutMs: Int
+    ): String = try {
+        Socket().use { s ->
+            s.connect(InetSocketAddress(host, port), timeoutMs)
+            s.soTimeout = timeoutMs
+            val auth = if (user.isNotEmpty()) {
+                val raw = "$user:$pass"
+                "Authorization: Basic " + android.util.Base64.encodeToString(
+                    raw.toByteArray(), android.util.Base64.NO_WRAP) + "\r\n"
+            } else ""
+            val req = buildString {
+                append("DESCRIBE rtsp://$host:$port/$path RTSP/1.0\r\n")
+                append("CSeq: 2\r\n")
+                append("User-Agent: CameraManager/1.0\r\n")
+                append("Accept: application/sdp\r\n")
+                if (auth.isNotEmpty()) append(auth)
+                append("\r\n")
+            }
+            s.getOutputStream().write(req.toByteArray())
+            s.getOutputStream().flush()
+            val reader = s.getInputStream().bufferedReader()
+            var line: String
+            val sb = StringBuilder()
+            var headersDone = false
+            var contentLen = 0
+            while (true) {
+                line = reader.readLine() ?: break
+                if (!headersDone) {
+                    if (line.startsWith("Content-Length:", ignoreCase = true)) {
+                        contentLen = line.substringAfter(':').trim().toIntOrNull() ?: 0
+                    }
+                    if (line.isBlank()) headersDone = true
+                } else {
+                    sb.appendLine(line)
+                    if (contentLen in 1..sb.length) break
+                }
+            }
+            sb.toString()
+        }
+    } catch (_: Exception) { "" }
 
     private fun httpServerHeader(host: String, port: Int): String = try {
         val url = URL("http://$host:$port/")
@@ -251,7 +483,6 @@ object DeviceAutoProbe {
                 "http://www.onvif.org/ver10/media/wsdl/GetStreamUri", xml,
                 d.username, d.password ?: "")
             ?: return null
-        // Match rtsp://... 完整 URL
         return Regex("rtsp://[^<'\"]+", RegexOption.IGNORE_CASE).find(resp)?.value
     }
 

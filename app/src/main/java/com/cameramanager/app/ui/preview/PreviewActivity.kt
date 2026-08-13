@@ -1,19 +1,25 @@
 package com.cameramanager.app.ui.preview
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.cameramanager.app.CameraApp
+import com.cameramanager.app.R
+import com.cameramanager.app.audio.VoiceIntercom
 import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.databinding.ActivityPreviewBinding
 import com.cameramanager.app.net.NetworkRouter
@@ -24,7 +30,6 @@ import com.cameramanager.app.service.FloatingWindowService
 import com.cameramanager.app.ui.DeviceViewModelFactory
 import com.cameramanager.app.ui.PreviewViewModel
 import com.cameramanager.app.ui.settings.SettingsActivity
-import com.cameramanager.app.ui.voice.VoiceIntercomActivity
 import com.cameramanager.app.util.PermissionHelper
 import com.cameramanager.app.util.PtzDirection
 import com.cameramanager.app.util.StorageHelper
@@ -53,6 +58,30 @@ class PreviewActivity : AppCompatActivity() {
     private var recordingStart = 0L
     private var presets: List<Preset> = emptyList()
     private var currentRoute: RouteResult? = null
+
+    // 内联对讲引擎
+    private var voiceEngine: VoiceIntercom? = null
+    private var voiceMode = VOICE_MODE_HOLD // 0=按住 1=电话
+
+    companion object {
+        private const val VOICE_MODE_HOLD = 0
+        private const val VOICE_MODE_CALL = 1
+        private const val REQ_MIC = 1001
+        private const val EXTRA_DEVICE_ID = "device_id"
+        private const val EXTRA_TEMP_DEVICE = "temp_device"
+
+        fun intent(context: Context, deviceId: Long): Intent =
+            Intent(context, PreviewActivity::class.java).putExtra(EXTRA_DEVICE_ID, deviceId)
+
+        /**
+         * 免添加直预览入口（局域网扫描发现后，还没入库，填完账号密码走这里）。
+         * Device 用 Parcelable 序列化直接传，不进 Room，PreviewActivity 照样能播。
+         */
+        fun intentTemp(context: Context, tempDevice: Device): Intent =
+            Intent(context, PreviewActivity::class.java)
+                .putExtra(EXTRA_TEMP_DEVICE, tempDevice)
+                .putExtra(EXTRA_DEVICE_ID, -1L)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,15 +174,19 @@ class PreviewActivity : AppCompatActivity() {
     private fun bindDevice(dev: Device) {
         val first = device == null
         device = dev
-        binding.titleText.text = dev.name
-        binding.profileText.text = dev.profileLabel()
+        binding.deviceName.text = dev.name
+        binding.statusText.text = dev.profileLabel()
         applyVisibilityByDevice(dev)
         applyTransform()
+        syncStateFromDevice(dev, caps)
         if (first) {
             lifecycleScope.launch {
                 controller = CameraController(dev).also {
                     caps = it.refreshCapabilities()
-                    runOnUiThread { applyVisibilityByCaps(caps) }
+                    runOnUiThread {
+                        applyVisibilityByCaps(caps)
+                        syncStateFromDevice(dev, caps)
+                    }
                 }
             }
             binding.videoLayout.post { startPlayback(dev) }
@@ -167,10 +200,26 @@ class PreviewActivity : AppCompatActivity() {
         binding.btnAudio.visibility = if (d.supportsAudio) View.VISIBLE else View.GONE
     }
 
+    /**
+     * 核心：UI 显示的功能完全按摄像头能力集 caps 决定——
+     * 摄像头支持啥按钮显示啥，不支持就 GONE，不会让用户按到"不支持"的功能。
+     * 参照 TP-LINK / 乐橙官方 APP 做法。
+     */
     private fun applyVisibilityByCaps(c: CameraCapabilities?) {
         if (c == null) return
+        // 云台 & 变焦（ptz + zoom）
         binding.ptzPanel.visibility = if (c.ptz) View.VISIBLE else View.GONE
+        // 在 ptzPanel 内部，zoom 按钮独立控制显示
+        binding.ptzZoomOut.visibility = if (c.zoom) View.VISIBLE else View.GONE
+        binding.ptzZoomIn.visibility = if (c.zoom) View.VISIBLE else View.GONE
+        // 对讲：设备要有语音能力
         binding.btnAudio.visibility = if (c.voiceIntercom) View.VISIBLE else View.GONE
+        // 预设位 / 巡航：有预设位能力才显示
+        binding.btnPreset.visibility = if (c.presets) View.VISIBLE else View.GONE
+        binding.btnCruise.visibility = if (c.cruise) View.VISIBLE else View.GONE
+        // ★ 底部常用条上的新快捷功能：镜头遮蔽 / 补光灯按 caps 动态隐藏
+        binding.btnPrivacy.visibility = if (c.privacyMask) View.VISIBLE else View.GONE
+        binding.btnWhiteLight.visibility = if (c.whiteLight) View.VISIBLE else View.GONE
     }
 
     private fun startPlayback(dev: Device) {
@@ -182,6 +231,27 @@ class PreviewActivity : AppCompatActivity() {
             currentRoute = route
             binding.routeText.text = routeLabel(route)
             val url = dev.rtspUrl(useHost = route.host, usePort = route.rtspPort)
+            // 播放前做一次"端口可达性"预检，出问题给用户更直白的说明（不再只说"连不上"）
+            val reachable = withContext(Dispatchers.IO) {
+                com.cameramanager.app.net.NetworkScanner.testReachable(route.host, route.rtspPort, 1200)
+            }
+            if (!reachable) {
+                val rtspHint = buildString {
+                    append("无法连上 ${route.host}:${route.rtspPort}（RTSP端口）\n")
+                    append("请检查：\n")
+                    append("1) 摄像头是否在同 WiFi 在线，端口${route.rtspPort}是否真开放\n")
+                    append("2) 管理端口填的是 80/ONVIF，但 RTSP 默认 554——本 App 已自动分开使用，可到「设备设置→网络路由」确认\n")
+                    append("3) RTSP 路径/账号密码不对会出现 401，也一样会无画面")
+                }
+                runOnUiThread {
+                    binding.statusText.text = "端口不可达"
+                    Toast.makeText(this@PreviewActivity, rtspHint, Toast.LENGTH_LONG).show()
+                    binding.reconnectOverlay.visibility = View.VISIBLE
+                    binding.reconnectProgress.visibility = View.GONE
+                    binding.reconnectHint.text = "RTSP 端口(${route.rtspPort})连不上\n请确认摄像头已开机且 554 或自定义 RTSP 端口开放"
+                    binding.btnReconnect.visibility = View.VISIBLE
+                }
+            }
             player.play(binding.videoLayout, url, dev.streamProfile)
         }
     }
@@ -240,13 +310,140 @@ class PreviewActivity : AppCompatActivity() {
     private fun setupControls() {
         tap(binding.btnSnapshot) { captureSnapshot() }
         tap(binding.btnRecord) { toggleRecording() }
-        tap(binding.btnAudio) {
-            device?.let { startActivity(VoiceIntercomActivity.intent(this, it.id)) }
-        }
+        tap(binding.btnAudio) { toggleAudioPanel() }
         tap(binding.btnProfile) { showProfilePicker() }
-        tap(binding.btnMoreTools) { showMoreTools() }
+        tap(binding.btnMoreTools) { showMoreToolsPanel() }
         tap(binding.btnPreset) { showPresetPicker() }
         tap(binding.btnCruise) { exec { it.toggleCruise() } }
+
+        // ========= 常用功能条上的核心快捷操作（不跳页，直接反馈） =========
+        // 1. 画面静音/有声切换
+        tap(binding.btnMute) {
+            val nowMuted = player.toggleMute()
+            if (nowMuted) {
+                binding.btnMute.text = "静音"
+                binding.btnMute.setIconResource(R.drawable.ic_volume)
+                binding.btnMute.alpha = 0.5f
+                toast("预览画面已静音（仅播放端，不影响录制原声）")
+            } else {
+                binding.btnMute.text = "有声"
+                binding.btnMute.setIconResource(R.drawable.ic_volume)
+                binding.btnMute.alpha = 1.0f
+                toast("已恢复预览画面声音")
+            }
+        }
+        // 2. 音量减（播放端，不影响摄像头录制）
+        tap(binding.btnVolumeDown) {
+            val pct = player.adjustVolume(-10)
+            toast("画面音量 $pct%")
+        }
+        // 3. 音量加
+        tap(binding.btnVolumeUp) {
+            val pct = player.adjustVolume(+10)
+            toast("画面音量 $pct%")
+        }
+        // 4. 隐私遮蔽（镜头遮罩）—— 点一下就切换，反馈在 toast 和按钮文字
+        tap(binding.btnPrivacy) {
+            val cur = featureStates.getOrDefault("privacyMask", false)
+            val next = !cur
+            exec { ctl ->
+                val r = ctl.setPrivacyMask(next)
+                if (r !is CameraController.CameraCommandResult.Unsupported &&
+                    r !is CameraController.CameraCommandResult.Failed) {
+                    featureStates["privacyMask"] = next
+                    lifecycleScope.launch { viewModel.updatePrivacy(next) }
+                    runOnUiThread {
+                        binding.btnPrivacy.text = if (next) "遮蔽●" else "遮蔽"
+                        binding.btnPrivacy.alpha = if (next) 1.0f else 0.7f
+                        toast(if (next) "已开启镜头遮蔽（黑画面/摄像头端）" else "已解除镜头遮蔽")
+                    }
+                } else {
+                    runOnUiThread {
+                        val msg = when (r) {
+                            is CameraController.CameraCommandResult.Unsupported -> "设备不支持镜头遮蔽"
+                            is CameraController.CameraCommandResult.Failed -> r.reason
+                            else -> "操作失败"
+                        }
+                        toast(msg)
+                    }
+                }
+                r
+            }
+        }
+        // 5. 白光灯补光灯开关
+        tap(binding.btnWhiteLight) {
+            val cur = featureStates.getOrDefault("whiteLight", false)
+            val next = !cur
+            exec { ctl ->
+                val r = ctl.setWhiteLight(next)
+                if (r !is CameraController.CameraCommandResult.Unsupported &&
+                    r !is CameraController.CameraCommandResult.Failed) {
+                    featureStates["whiteLight"] = next
+                    runOnUiThread {
+                        binding.btnWhiteLight.text = if (next) "补光●" else "补光"
+                        binding.btnWhiteLight.alpha = if (next) 1.0f else 0.7f
+                        toast(if (next) "白光灯已开" else "白光灯已关")
+                    }
+                } else {
+                    runOnUiThread {
+                        val msg = when (r) {
+                            is CameraController.CameraCommandResult.Unsupported -> "设备不支持白光灯"
+                            is CameraController.CameraCommandResult.Failed -> r.reason
+                            else -> "操作失败"
+                        }
+                        toast(msg)
+                    }
+                }
+                r
+            }
+        }
+
+        // 对讲面板交互（TP-LINK 风格，不跳新页）
+        tap(binding.audioClose) { hideAudioPanel(true) }
+        binding.audioModeGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.radioHoldTalk -> {
+                    voiceMode = VOICE_MODE_HOLD
+                    binding.audioModeHint.text = "按住说话模式"
+                    binding.btnHoldToTalk.visibility = View.VISIBLE
+                    binding.fullDuplexBar.visibility = View.GONE
+                    // 切模式先挂断
+                    stopVoice()
+                }
+                R.id.radioFullDuplex -> {
+                    voiceMode = VOICE_MODE_CALL
+                    binding.audioModeHint.text = "电话对讲模式"
+                    binding.btnHoldToTalk.visibility = View.GONE
+                    binding.fullDuplexBar.visibility = View.VISIBLE
+                    stopVoice()
+                }
+            }
+        }
+        // 按住说话：ACTION_DOWN 开始录音，ACTION_UP/ACTION_CANCEL 结束
+        binding.btnHoldToTalk.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    binding.btnHoldToTalk.text = "松 手 结 束"
+                    binding.btnHoldToTalk.backgroundTintList =
+                        android.content.res.ColorStateList.valueOf(0xFFFF5722.toInt())
+                    startVoiceIfPermitted()
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    binding.btnHoldToTalk.text = "按住 说话"
+                    binding.btnHoldToTalk.backgroundTintList =
+                        androidx.core.content.ContextCompat.getColorStateList(
+                            this@PreviewActivity, com.cameramanager.app.R.color.brand_primary
+                        )
+                    stopVoice()
+                    true
+                }
+                else -> false
+            }
+        }
+        tap(binding.btnCallAnswer) { startVoiceIfPermitted() }
+        tap(binding.btnCallHangup) { stopVoice() }
 
         pressHold(binding.ptzUp,
             { it.move(0f, PtzDirection.UP.tilt) }, { it.stop() })
@@ -263,28 +460,168 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun showProfilePicker() {
-        val labels = arrayOf("高清(主码流)", "标清(子码流)", "流畅")
-        AlertDialog.Builder(this).setTitle("选择清晰度")
-            .setItems(labels) { _, which -> viewModel.setStreamProfile(which) }.show()
+        val d = device ?: return
+        val main = d.mainRtspPath?.take(18) ?: "同默认"
+        val sub = d.subRtspPath?.take(18) ?: "同默认"
+        val labels = arrayOf(
+            "原画·最高分辨率 (主码流·$main)",
+            "标清·推荐预览 (子码流·$sub)",
+            "流畅·弱网使用 (子码流)"
+        )
+        val checkedIdx = d.streamProfile.coerceIn(0, 2)
+        AlertDialog.Builder(this).setTitle("选择清晰度 (切换后自动重连)")
+            .setSingleChoiceItems(labels, checkedIdx) { dl, which ->
+                // 选完立刻改存储并重连画面，让用户看到不同码流的效果
+                lifecycleScope.launch {
+                    runCatching { viewModel.setStreamProfile(which) }
+                    val refreshed = withContext(Dispatchers.IO) {
+                        CameraApp.get().repository.getDevice(d.id)
+                    } ?: d.copy(streamProfile = which)
+                    device = refreshed
+                    binding.statusText.text = refreshed.profileLabel()
+                    runOnUiThread { startPlayback(refreshed) }
+                }
+                dl.dismiss()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
-    private fun showMoreTools() {
-        val items = mutableListOf<CharSequence>()
-        val actions = mutableListOf<() -> Unit>()
+    // ========= 更多功能：带状态开关的面板（TP-LINK 风格） =========
+    private val featureStates = hashMapOf<String, Boolean>()
+
+    private fun syncStateFromDevice(d: Device, c: CameraCapabilities?) {
+        featureStates["autoTrack"] = d.autoTrack
+        featureStates["privacyMask"] = d.privacyMask
+    }
+
+    /** 「更多」面板：每个开关都标注开关状态，选中切，长按解释。
+     *  和之前的纯"动作列表"不同，这版一眼看得清当前是开是关。
+     */
+    private fun showMoreToolsPanel() {
+        val ctx = this
+        val dev = device ?: return
         val c = caps
+        val rows = mutableListOf<Pair<String, (Boolean) -> Unit>>()
+        val initChecked = mutableListOf<Boolean>()
+        val labels = mutableListOf<String>()
 
-        items.add("一键复位"); actions.add { exec { it.home() } }
-        if (c?.autoTrack == true) { items.add("AI追踪"); actions.add { exec { it.toggleAutoTrack() } } }
-        if (c?.nightVision == true) { items.add("夜视模式"); actions.add { showNightVisionPicker() } }
-        if (c?.privacyMask == true) { items.add("隐私遮蔽"); actions.add { exec { it.setPrivacyMask(!(device?.privacyMask ?: false)) } } }
-        if (c?.whiteLight == true) { items.add("白光灯"); actions.add { exec { it.setWhiteLight(true) } } }
-        if (c?.siren == true) { items.add("声光威慑"); actions.add { exec { it.triggerSiren(true) } } }
-        items.add("悬浮窗预览"); actions.add { openFloatingWindow() }
-        items.add("画面旋转"); actions.add { viewModel.updateRotation((device?.rotation ?: 0) + 90) }
-        items.add("镜像翻转"); actions.add { viewModel.toggleMirror() }
+        fun addSwitch(name: String, key: String, action: suspend (CameraController, Boolean) -> CameraController.CameraCommandResult) {
+            labels.add(name)
+            val st = featureStates.getOrPut(key) { false }
+            initChecked.add(st)
+            rows.add(name to { newVal ->
+                featureStates[key] = newVal
+                exec { action(it, newVal) }
+            })
+        }
 
-        AlertDialog.Builder(this).setTitle("更多功能")
-            .setItems(items.toTypedArray()) { _, i -> actions[i]() }.show()
+        // note: 已按用户要求去掉 一键复位
+        if (c?.autoTrack == true)
+            addSwitch("AI人形追踪（当前:${if (featureStates.getOrDefault("autoTrack", false)) "开" else "关"}）", "autoTrack") { ctl, v ->
+                ctl.toggleAutoTrack().also {
+                    if (it is CameraController.CameraCommandResult.OkWithMessage) featureStates["autoTrack"] = v
+                    else if (it is CameraController.CameraCommandResult.Ok) featureStates["autoTrack"] = v
+                }
+            }
+        if (c?.nightVision == true) {
+            labels.add("夜视模式（切换:智能/红外/全彩）")
+            initChecked.add(false)
+            rows.add("夜视" to { _ -> showNightVisionPicker() })
+        }
+        if (c?.privacyMask == true)
+            addSwitch("隐私遮蔽（当前:${if (featureStates.getOrDefault("privacyMask", false)) "开" else "关"}）", "privacyMask") { ctl, v ->
+                val r = ctl.setPrivacyMask(v)
+                if (r !is CameraController.CameraCommandResult.Unsupported &&
+                    r !is CameraController.CameraCommandResult.Failed) {
+                    lifecycleScope.launch { viewModel.updatePrivacy(v) }
+                    featureStates["privacyMask"] = v
+                }
+                r
+            }
+        if (c?.whiteLight == true)
+            addSwitch("白光灯（当前:${if (featureStates.getOrDefault("whiteLight", false)) "开" else "关"}）", "whiteLight") { ctl, v ->
+                ctl.setWhiteLight(v).also {
+                    if (it !is CameraController.CameraCommandResult.Unsupported &&
+                        it !is CameraController.CameraCommandResult.Failed)
+                        featureStates["whiteLight"] = v
+                }
+            }
+        if (c?.siren == true) {
+            labels.add("声光威慑（一次性触发）")
+            initChecked.add(false)
+            rows.add("威慑" to { _ ->
+                exec { it.triggerSiren(true); it.triggerSiren(false) }
+            })
+        }
+
+        // 画面预览静音/音量（所有摄像头都支持，因为是播放端静音，不是摄像头端）
+        labels.add(
+            if (player.isMuted()) "画面声音（当前: 静音，点击恢复）"
+            else "画面声音（当前: 有声，点击静音）"
+        )
+        initChecked.add(player.isMuted().not())
+        rows.add("预览声音" to { _ ->
+            val nowMuted = player.toggleMute()
+            runOnUiThread { toast(if (nowMuted) "已静音预览画面" else "已恢复预览画面声音") }
+        })
+
+        // 对讲音量（若摄像头能力可配置）
+        if (c?.audioConfig == true) {
+            labels.add("对讲扬声器音量（点击调整）")
+            initChecked.add(false)
+            rows.add("扬声音量" to { _ ->
+                val items = (0..100 step 10).map { "$it %" }.toTypedArray()
+                AlertDialog.Builder(ctx).setTitle("摄像机扬声音量（对讲时播放音量）")
+                    .setItems(items) { dl, w ->
+                        val vol = w * 10
+                        lifecycleScope.launch {
+                            exec { it.setSpeakerVolume(vol); CameraController.CameraCommandResult.Ok }
+                            withContext(Dispatchers.Main) { toast("扬声器音量: $vol%") }
+                        }
+                        dl.dismiss()
+                    }.setNegativeButton("取消", null).show()
+            })
+            labels.add("收音麦克风音量（点击调整）")
+            initChecked.add(false)
+            rows.add("收音音量" to { _ ->
+                val items = (0..100 step 10).map { "$it %" }.toTypedArray()
+                AlertDialog.Builder(ctx).setTitle("摄像机收音音量（环境声采集）")
+                    .setItems(items) { dl, w ->
+                        val vol = w * 10
+                        lifecycleScope.launch {
+                            exec { it.setMicVolume(vol); CameraController.CameraCommandResult.Ok }
+                            withContext(Dispatchers.Main) { toast("收音音量: $vol%") }
+                        }
+                        dl.dismiss()
+                    }.setNegativeButton("取消", null).show()
+            })
+        }
+
+        labels.add("悬浮窗预览")
+        initChecked.add(false)
+        rows.add("悬浮窗" to { _ -> openFloatingWindow() })
+
+        labels.add("画面旋转 90°")
+        initChecked.add(false)
+        rows.add("旋转" to { _ ->
+            lifecycleScope.launch { viewModel.updateRotation((device?.rotation ?: 0) + 90) }
+        })
+
+        labels.add("镜像翻转")
+        initChecked.add(false)
+        rows.add("镜像" to { _ -> lifecycleScope.launch { viewModel.toggleMirror() } })
+
+        // 带复选框对话框，点击切换条目状态（开关切换 或 纯操作）
+        val checkedArr = initChecked.toBooleanArray()
+        AlertDialog.Builder(ctx).setTitle("更多功能")
+            .setMultiChoiceItems(labels.toTypedArray(), checkedArr) { _, which, isChecked ->
+                checkedArr[which] = isChecked
+                val (name, fn) = rows[which]
+                runCatching { fn(isChecked) }
+            }
+            .setPositiveButton("完成", null)
+            .show()
     }
 
     private fun showNightVisionPicker() {
@@ -299,15 +636,63 @@ class PreviewActivity : AppCompatActivity() {
             val list = withContext(Dispatchers.IO) {
                 CameraVendorApi.forDevice(dev).listPresets(dev)
             }
-            val data = (list as? ApiResult.Success)?.data ?: emptyList()
+            val data = (list as? ApiResult.Success)?.data?.filter { it.enabled }.orEmpty()
             presets = data
+
+            // 空状态：弹窗里先给"暂无"提示和"新建预设位"按钮，而不是 8 个假点位
+            if (data.isEmpty()) {
+                AlertDialog.Builder(this@PreviewActivity)
+                    .setTitle("预置位")
+                    .setMessage("还没有任何预置位。\n把摄像头转到想保存的角度，点击「新建预置位」即可收藏当前位置。")
+                    .setPositiveButton("新建预置位") { _, _ -> savePresetDialog() }
+                    .setNegativeButton("取消", null)
+                    .show()
+                return@launch
+            }
+
             val items = data.map { "${it.index}. ${it.name}" }.toTypedArray()
-            AlertDialog.Builder(this@PreviewActivity).setTitle("预置位")
-                .setItems(items) { _, which ->
-                    if (which < data.size) exec { it.gotoPreset(data[which].index) }
-                }.setNeutralButton("保存当前") { _, _ -> savePresetDialog() }
+            val ops = arrayOf("重命名选中项", "删除选中项", "保存当前为新预置位")
+            AlertDialog.Builder(this@PreviewActivity).setTitle("预置位（点前N项跳转；后3项为操作）")
+                .setItems(items + ops) { _, which ->
+                    when {
+                        which < data.size -> exec { it.gotoPreset(data[which].index) }
+                        which == data.size -> renamePresetDialog(data)
+                        which == data.size + 1 -> showDeletePresetDialog(data)
+                        else -> savePresetDialog()
+                    }
+                }.setNeutralButton("关闭", null)
                 .show()
         }
+    }
+
+    private fun renamePresetDialog(data: List<Preset>) {
+        val labels = data.map { "${it.index}. ${it.name}" }.toTypedArray()
+        var chosen = -1
+        AlertDialog.Builder(this)
+            .setTitle("选要重命名的预置位")
+            .setSingleChoiceItems(labels, -1) { _, w -> chosen = w }
+            .setPositiveButton("下一步") { _, _ ->
+                if (chosen !in data.indices) { toast("请先选一个预置位"); return@setPositiveButton }
+                val p = data[chosen]
+                val et = android.widget.EditText(this).apply {
+                    setText(p.name); hint = "预置位名称"
+                }
+                AlertDialog.Builder(this).setTitle("重命名预置位").setView(et)
+                    .setPositiveButton("保存") { _, _ ->
+                        val newName = et.text.toString().ifEmpty { p.name }
+                        // 相同 index 重新保存 = 覆盖名称 (ONVIF/Tapo 通用语义)
+                        exec { it.savePreset(p.index, newName) }
+                    }.setNegativeButton("取消", null).show()
+            }.setNegativeButton("取消", null).show()
+    }
+
+    private fun showDeletePresetDialog(data: List<Preset>) {
+        val labels = data.map { "${it.index}. ${it.name}" }.toTypedArray()
+        AlertDialog.Builder(this@PreviewActivity)
+            .setTitle("删除预置位")
+            .setItems(labels) { _, which ->
+                if (which in data.indices) exec { it.deletePreset(data[which].index) }
+            }.show()
     }
 
     private fun savePresetDialog() {
@@ -424,26 +809,72 @@ class PreviewActivity : AppCompatActivity() {
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (recording) toggleRecording()
-        player.release()
+    // ========= 对讲内联面板 =========
+    private fun toggleAudioPanel() {
+        if (binding.audioPanel.visibility == View.VISIBLE) {
+            hideAudioPanel(true)
+        } else {
+            binding.audioPanel.visibility = View.VISIBLE
+            binding.audioModeGroup.check(
+                if (voiceMode == VOICE_MODE_HOLD) R.id.radioHoldTalk else R.id.radioFullDuplex
+            )
+        }
     }
 
-    companion object {
-        private const val EXTRA_DEVICE_ID = "device_id"
-        private const val EXTRA_TEMP_DEVICE = "temp_device"
+    private fun hideAudioPanel(stop: Boolean) {
+        binding.audioPanel.visibility = View.GONE
+        if (stop) stopVoice()
+    }
 
-        fun intent(context: Context, deviceId: Long): Intent =
-            Intent(context, PreviewActivity::class.java).putExtra(EXTRA_DEVICE_ID, deviceId)
+    private fun startVoiceIfPermitted() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            return
+        }
+        val dev = device ?: return
+        runCatching {
+            if (voiceEngine == null) {
+                voiceEngine = VoiceIntercom(dev, VoiceIntercom.Transport.TCP)
+            }
+            val ok = voiceEngine?.start() == true
+            if (!ok) {
+                toast("对讲启动失败：摄像头可能未开放对讲TCP端口 (RTSP端口+2) 或不支持裸PCM通道")
+            } else {
+                if (voiceMode == VOICE_MODE_CALL) {
+                    binding.btnCallAnswer.text = "通话中…"
+                    binding.btnCallAnswer.isEnabled = false
+                    binding.btnCallHangup.isEnabled = true
+                }
+            }
+        }.onFailure { toast("对讲异常: ${it.message}") }
+    }
 
-        /**
-         * 免添加直预览入口（局域网扫描发现后，还没入库，填完账号密码走这里）。
-         * Device 用 Parcelable 序列化直接传，不进 Room，PreviewActivity 照样能播。
-         */
-        fun intentTemp(context: Context, tempDevice: Device): Intent =
-            Intent(context, PreviewActivity::class.java)
-                .putExtra(EXTRA_TEMP_DEVICE, tempDevice)
-                .putExtra(EXTRA_DEVICE_ID, -1L)
+    private fun stopVoice() {
+        runCatching { voiceEngine?.stop() }
+        voiceEngine = null
+        binding.btnCallAnswer.text = "拨  通"
+        binding.btnCallAnswer.isEnabled = true
+        binding.btnCallHangup.isEnabled = true
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_MIC && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            startVoiceIfPermitted()
+        } else if (requestCode == REQ_MIC) {
+            toast("需要麦克风权限才能对讲")
+        }
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+
+    override fun onDestroy() {
+        super.onDestroy()
+        runCatching { stopVoice() }
+        if (recording) runCatching { toggleRecording() }
+        runCatching { player.release() }
     }
 }

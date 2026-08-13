@@ -117,10 +117,10 @@ class DeviceControlActivity : AppCompatActivity() {
         }
 
         // 视频参数（码流清晰度）
-        setRow(binding.rowVideoParam, "视频参数", null, value = d.profileLabel())
+        setRow(binding.rowVideoParam, "清晰度设置", "预览用：主码流(原画) / 子码流(流畅)", value = d.profileLabel())
         binding.rowVideoParam.root.setOnClickListener {
             val profiles = arrayOf("高清 (主码流)", "标清 (子码流)", "流畅")
-            AlertDialog.Builder(this).setTitle("视频参数")
+            AlertDialog.Builder(this).setTitle("预览清晰度")
                 .setSingleChoiceItems(profiles, d.streamProfile.coerceIn(0, 2)) { dl, w ->
                     lifecycleScope.launch {
                         runCatching {
@@ -129,10 +129,18 @@ class DeviceControlActivity : AppCompatActivity() {
                             }
                         }
                         binding.rowVideoParam.tvValue.text = profiles[w]
-                        toast("视频参数：${profiles[w]}")
+                        toast("预览清晰度：${profiles[w]}")
                     }
                     dl.dismiss()
                 }.setNegativeButton("取消", null).show()
+        }
+
+        // 音视频参数（编码/分辨率/帧率/码率/音频流）—— 从摄像头读取并写回
+        setRow(binding.rowVideoAudioCfg, "音视频编码与参数",
+            "分辨率/帧率/码率/音频开关，影响录制原画、回放和下载画质",
+            value = "前往设置")
+        binding.rowVideoAudioCfg.root.setOnClickListener {
+            safeStart(VideoAudioConfigActivity.intent(this, d.id))
         }
 
         // OSD 设置

@@ -67,6 +67,6 @@
     <string name="app_settings_title">应用设置</string>
     <string name="section_tunnel">内网穿透</string>
     <string name="section_about">关于</string>
-    <string name="about_version">版本 1.0.0</string>
+    <string name="about_version">版本 1.0.9</string>
     <string name="about_desc">多品牌摄像头统一管理 · ONVIF/RTSP 标准协议 · NVR 式自动探测</string>
 </resources>

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- TP-LINK / 乐橙 风格回放页：默认展开播放器 + 录像列表；日历可折叠 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
@@ -6,44 +7,96 @@
 
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        android:background="@color/brand_primary" app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_close"/>
+        android:background="@color/bg_dark" app:titleTextColor="@color/white"
+        app:title="历史回放"
+        app:navigationIcon="@drawable/ic_back_dark"/>
 
     <androidx.media3.ui.PlayerView android:id="@+id/playerView"
-        android:layout_width="match_parent" android:layout_height="220dp"
+        android:layout_width="match_parent" android:layout_height="210dp"
         android:background="#000000" app:resize_mode="fit"
         app:use_controller="true" app:show_buffering="when_playing"/>
 
-    <TextView android:id="@+id/durationLabel"
+    <!-- 回放操作栏：画质切换 + 下载原画 + 信息 -->
+    <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:padding="8dp" android:background="@color/bg_card"
-        android:textColor="@color/text_secondary" android:textSize="13sp"
-        android:text="选择下方录像或时间轴开始回放"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/bg_card"
+        android:paddingHorizontal="10dp" android:paddingVertical="4dp">
+        <TextView android:id="@+id/durationLabel"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingVertical="6dp"
+            android:textColor="@color/text_primary" android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="点击下方录像或时间轴开始回放"/>
+        <Button
+            android:id="@+id/btnQuality"
+            android:layout_width="wrap_content" android:layout_height="34dp"
+            android:layout_marginEnd="6dp"
+            style="?attr/materialButtonOutlinedStyle"
+            android:textSize="12sp"
+            android:text="原画"/>
+        <Button
+            android:id="@+id/btnDownload"
+            android:layout_width="wrap_content" android:layout_height="34dp"
+            style="?attr/materialButtonOutlinedStyle"
+            android:textSize="12sp"
+            android:text="下载原画"/>
+    </LinearLayout>
 
-    <TextView android:id="@+id/dateLabel"
+    <!-- 日期栏（点一下展开日历，和TP-LINK一样） -->
+    <LinearLayout
+        android:id="@+id/barDate"
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:padding="10dp" android:textColor="@color/text_primary"
-        android:textSize="14sp" android:textStyle="bold"
-        android:background="@color/bg_card"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp" android:paddingEnd="10dp"
+        android:paddingVertical="12dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true">
+        <TextView android:id="@+id/dateLabel"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" android:textStyle="bold"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="选择日期" android:textColor="@color/brand_primary"
+            android:textSize="13sp" android:layout_marginEnd="6dp"/>
+        <ImageView android:layout_width="18dp" android:layout_height="18dp"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/brand_primary"/>
+    </LinearLayout>
 
     <CalendarView android:id="@+id/calendarView"
-        android:layout_width="match_parent" android:layout_height="260dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:visibility="gone"
         android:theme="@style/AlertDialogDark"/>
+
+    <TextView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="24 小时时间轴 (点有色段直接跳转，橙色=移动侦测)"
+        android:textSize="11sp" android:textColor="@color/text_secondary"
+        android:paddingStart="14dp" android:paddingEnd="14dp"
+        android:paddingTop="8dp"/>
 
     <com.cameramanager.app.ui.playback.TimelineView android:id="@+id/timeline"
         android:layout_width="match_parent" android:layout_height="64dp"
-        android:layout_margin="8dp" android:background="@color/bg_card"
+        android:layout_marginHorizontal="14dp" android:layout_marginVertical="6dp"
+        android:background="@drawable/bg_ptz_center"
         android:padding="4dp"/>
 
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
         android:layout_weight="1">
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
             android:layout_width="match_parent" android:layout_height="match_parent"
-            android:padding="6dp"/>
+            android:paddingHorizontal="10dp" android:paddingVertical="4dp"/>
         <TextView android:id="@+id/empty"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center" android:gravity="center"
             android:textColor="@color/text_secondary" android:visibility="gone"
-            android:text="@string/empty_recordings"/>
+            android:textSize="13sp"
+            android:padding="20dp"
+            android:text="当日暂无录像\n· 请确认摄像头已开启移动侦测或定时录像\n· 录像可存在TF卡或本地App录制"/>
     </FrameLayout>
 </LinearLayout>

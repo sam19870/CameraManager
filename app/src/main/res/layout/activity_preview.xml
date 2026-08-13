@@ -1,148 +1,286 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 全屏实时预览：顶部信息条 + 视频层 + (内联对讲条) + 可滑动常用功能条 + 云台控制盘 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="@android:color/black">
 
+    <!-- 视频容器 -->
     <org.videolan.libvlc.util.VLCVideoLayout
         android:id="@+id/videoLayout"
-        android:layout_width="match_parent" android:layout_height="match_parent"/>
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@android:color/black"/>
 
+    <!-- 覆盖层（顶部信息 + 底部控制 + 回放异常） -->
     <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_gravity="top" android:orientation="vertical"
-        android:background="@drawable/bg_top_gradient">
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="match_parent" android:layout_height="56dp"
-            android:orientation="horizontal" android:gravity="center_vertical"
-            android:paddingStart="8dp" android:paddingEnd="8dp"
-            android:layout_marginTop="24dp">
-
-            <ImageView
-                android:id="@+id/btnBack"
-                android:layout_width="40dp" android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp" android:src="@drawable/ic_back_white"
-                android:contentDescription="返回"/>
-
-            <LinearLayout
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:orientation="vertical"
-                android:layout_marginStart="4dp">
-                <TextView android:id="@+id/titleText"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textColor="@color/white" android:textSize="16sp"
-                    android:textStyle="bold" android:maxLines="1"
-                    android:ellipsize="end" android:text="摄像头"/>
-                <LinearLayout
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:orientation="horizontal" android:layout_marginTop="2dp">
-                    <View android:layout_width="6dp" android:layout_height="6dp"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginEnd="4dp"
-                        android:background="@drawable/dot_online"/>
-                    <TextView android:id="@+id/statusText"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:textColor="#CCFFFFFF" android:textSize="11sp"
-                        android:text="连接中"/>
-                    <TextView
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:textColor="#80FFFFFF" android:textSize="11sp"
-                        android:text=" · " android:layout_marginStart="4dp"
-                        android:layout_marginEnd="4dp"/>
-                    <TextView android:id="@+id/routeText"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:textColor="#B8E0FF" android:textSize="11sp"
-                        android:text="选路中…"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <TextView android:id="@+id/profileText"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textColor="@color/white" android:textSize="12sp"
-                android:background="#4D000000" android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp" android:layout_marginEnd="8dp"
-                android:text="标清"/>
-
-            <ImageView
-                android:id="@+id/btnMore"
-                android:layout_width="40dp" android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp" android:src="@drawable/ic_more_vert_white"
-                android:contentDescription="更多设置"/>
-        </LinearLayout>
-    </LinearLayout>
-
-    <TextView android:id="@+id/timeoutText"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="top|end" android:layout_marginTop="96dp"
-        android:layout_marginEnd="12dp" android:background="#80CC3300"
-        android:paddingHorizontal="8dp" android:paddingVertical="4dp"
-        android:textColor="@color/white" android:textSize="11sp"
-        android:text="超时: 0" android:visibility="gone"/>
-
-    <View android:id="@+id/recordIndicator"
-        android:layout_width="10dp" android:layout_height="10dp"
-        android:layout_gravity="top|end" android:layout_marginTop="100dp"
-        android:layout_marginEnd="96dp"
-        android:background="@drawable/dot_online" android:visibility="gone"/>
-
-    <LinearLayout android:id="@+id/reconnectOverlay"
-        android:layout_width="260dp" android:layout_height="wrap_content"
-        android:layout_gravity="center" android:orientation="vertical"
-        android:gravity="center" android:visibility="gone"
-        android:background="@drawable/bg_reconnect_card" android:padding="20dp">
-        <ProgressBar
-            android:id="@+id/reconnectProgress"
-            android:layout_width="36dp" android:layout_height="36dp"
-            android:indeterminateTint="@color/brand_accent"/>
-        <TextView android:id="@+id/reconnectHint"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textColor="@color/white" android:textSize="13sp"
-            android:gravity="center"
-            android:text="画面无响应，正在重连"/>
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReconnect"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cornerRadius="20dp"
-            android:backgroundTint="@color/brand_accent"
-            android:textColor="@color/black"
-            android:text="手动重连"
-            android:visibility="gone"/>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_gravity="bottom" android:orientation="vertical"
-        android:background="@drawable/bg_bottom_gradient">
-
+        <!-- 顶部信息条：返回 / 摄像头名 / 选路 / 状态 / 重连提示 / 更多设置 -->
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:gravity="center"
-            android:paddingTop="16dp" android:paddingBottom="4dp"
-            android:paddingHorizontal="8dp">
+            android:orientation="vertical"
+            android:background="@drawable/bg_top_gradient">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSnapshot" style="@style/IconActionBtn"
-                app:icon="@drawable/ic_snapshot" android:text="截图"/>
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRecord" style="@style/IconActionBtn"
-                app:icon="@drawable/ic_record" android:text="录像"
-                app:iconTint="@color/alarm_red"/>
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAudio" style="@style/IconActionBtn"
-                app:icon="@drawable/ic_mic" android:text="对讲"/>
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnProfile" style="@style/IconActionBtn"
-                app:icon="@drawable/ic_resolution" android:text="清晰度"/>
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnMoreTools" style="@style/IconActionBtn"
-                app:icon="@drawable/ic_toolbox" android:text="更多"/>
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingHorizontal="10dp" android:paddingTop="10dp"
+                android:paddingBottom="6dp">
+
+                <ImageView
+                    android:id="@+id/btnBack"
+                    android:layout_width="40dp" android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_back_white"
+                    app:tint="@color/white"/>
+
+                <LinearLayout
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical"
+                    android:paddingStart="6dp">
+                    <TextView
+                        android:id="@+id/deviceName"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="@color/white" android:textStyle="bold"
+                        android:textSize="16sp"
+                        tools:text="客厅摄像头"/>
+                    <TextView
+                        android:id="@+id/routeText"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#B3FFFFFF" android:textSize="12sp"
+                        tools:text="内网直连 · 自动选路"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textColor="#B3FFFFFF" android:textSize="12sp"
+                    android:layout_marginEnd="10dp"
+                    tools:text="播放中"/>
+                <TextView
+                    android:id="@+id/timeoutText"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textColor="@color/alarm_red" android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    tools:text="● 超时 3 次"
+                    android:layout_marginEnd="6dp"/>
+                <ImageView
+                    android:id="@+id/btnMore"
+                    android:layout_width="40dp" android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_more_vert_white"
+                    app:tint="@color/white"/>
+            </LinearLayout>
         </LinearLayout>
 
+        <!-- 中间撑满，让控件落底 -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:orientation="vertical">
+
+            <!-- 本地录制小旗标 -->
+            <TextView android:id="@+id/recordIndicator"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="end" android:layout_marginTop="12dp" android:layout_marginEnd="14dp"
+                android:background="@drawable/bg_status_pill"
+                android:paddingHorizontal="10dp" android:paddingVertical="4dp"
+                android:textColor="@color/white" android:textSize="12sp"
+                android:drawablePadding="4dp"
+                android:textAlignment="center"
+                android:drawableStart="@drawable/ic_alarm"
+                android:text="录制中 00:00"
+                android:visibility="gone"/>
+        </LinearLayout>
+
+        <!-- ====== 重连/超时蒙层（仅在异常时显示，不遮挡视频） ====== -->
+        <FrameLayout
+            android:id="@+id/reconnectOverlay"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone"
+            android:paddingHorizontal="18dp" android:paddingVertical="12dp"
+            android:background="#CC000000">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <ProgressBar
+                    android:id="@+id/reconnectProgress"
+                    android:layout_width="26dp" android:layout_height="26dp"
+                    android:indeterminateTint="@color/white"
+                    android:visibility="gone"/>
+                <TextView android:id="@+id/reconnectHint"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp" android:layout_marginEnd="10dp"
+                    android:textColor="#FFCDD2" android:textSize="13sp"
+                    tools:text="网络异常，重连中(1/3)…"/>
+                <Button android:id="@+id/btnReconnect"
+                    android:layout_width="wrap_content" android:layout_height="38dp"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:textColor="@color/white"
+                    app:strokeColor="@color/white"
+                    android:textSize="13sp"
+                    android:text="恢复连接"
+                    android:visibility="gone"/>
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- ====== 内联对讲控制条（默认隐藏，点对讲按钮展开） ====== -->
+        <LinearLayout
+            android:id="@+id/audioPanel"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:background="#E6000000"
+            android:paddingHorizontal="12dp" android:paddingVertical="10dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:gravity="center_vertical" android:orientation="horizontal">
+                <TextView android:id="@+id/audioModeHint"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="#80FFFFFF" android:textSize="13sp"
+                    android:text="按住说话模式：松开结束，长按开始讲话"/>
+                <ImageView android:id="@+id/audioClose"
+                    android:layout_width="34dp" android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_close"
+                    app:tint="@color/white"/>
+            </LinearLayout>
+
+            <RadioGroup android:id="@+id/audioModeGroup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingVertical="6dp">
+                <RadioButton android:id="@+id/radioHoldTalk"
+                    android:layout_width="0dp" android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:textSize="13sp" android:textColor="@color/white"
+                    android:text="按住说话"
+                    android:buttonTint="@color/brand_primary"/>
+                <RadioButton android:id="@+id/radioFullDuplex"
+                    android:layout_width="0dp" android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:textSize="13sp" android:textColor="@color/white"
+                    android:text="电话对讲"
+                    android:buttonTint="@color/brand_primary"/>
+            </RadioGroup>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnHoldToTalk"
+                android:layout_width="match_parent" android:layout_height="70dp"
+                android:layout_marginTop="4dp"
+                app:icon="@drawable/ic_mic"
+                app:iconSize="28dp"
+                app:iconGravity="textStart"
+                app:cornerRadius="18dp"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:text="按住 开始讲话 · 松开 结束"/>
+
+            <!-- 电话对讲模式下的接听/挂断（水平条） -->
+            <LinearLayout android:id="@+id/fullDuplexBar"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:paddingVertical="4dp"
+                android:visibility="gone">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCallAnswer"
+                    android:layout_width="0dp" android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    app:cornerRadius="14dp"
+                    android:backgroundTint="#17A060"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_mic"
+                    android:text="接听"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCallHangup"
+                    android:layout_width="0dp" android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    app:cornerRadius="14dp"
+                    android:backgroundTint="@color/alarm_red"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_close"
+                    android:text="挂断"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ====== 常用功能操作条（可横向滑动，常用功能全在这，不跳页） ====== -->
+        <HorizontalScrollView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="#E6000000"
+            android:paddingHorizontal="6dp"
+            android:paddingTop="10dp" android:paddingBottom="4dp"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+            <LinearLayout
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSnapshot" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_snapshot" android:text="截图"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRecord" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_record" android:text="录像"
+                    app:iconTint="@color/alarm_red"/>
+
+                <!-- 画面静音/有声（所有摄像头都有，播放端控制） -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMute" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_volume" android:text="有声"/>
+
+                <!-- 播放音量减（常用，不跳页） -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnVolumeDown" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_zoom_out" android:text="音量-"/>
+                <!-- 播放音量加 -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnVolumeUp" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_zoom_in" android:text="音量+"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAudio" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_mic" android:text="对讲"/>
+
+                <!-- 隐私遮蔽（镜头遮罩，按caps显隐） -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPrivacy" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_video_block" android:text="遮蔽"/>
+
+                <!-- 白光灯/补光灯（按caps显隐） -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWhiteLight" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_light" android:text="补光"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnProfile" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_resolution" android:text="清晰度"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPreset" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_alarm" android:text="预置位"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCruise" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_crossing" android:text="巡航"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMoreTools" style="@style/IconActionBtn"
+                    app:icon="@drawable/ic_toolbox" android:text="更多"/>
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- 云台控制盘（可上下左右+变焦，按caps显示） -->
         <FrameLayout
             android:id="@+id/ptzPanel"
             android:layout_width="match_parent" android:layout_height="260dp"
@@ -190,36 +328,17 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="8dp" android:src="@drawable/ic_zoom_out"
                     app:tint="@color/white"/>
-                <View android:layout_width="64dp" android:layout_height="64dp"
-                    android:layout_marginHorizontal="8dp"
-                    android:background="@drawable/bg_ptz_center"/>
+                <ImageView android:id="@+id/ptzStop"
+                    android:layout_width="44dp" android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp" android:src="@drawable/ic_snapshot"
+                    app:tint="#FFFF9800"/>
                 <ImageView android:id="@+id/ptzZoomIn"
                     android:layout_width="40dp" android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="8dp" android:src="@drawable/ic_zoom_in"
                     app:tint="@color/white"/>
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_gravity="bottom|end"
-                android:orientation="horizontal" android:padding="12dp">
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/btnPreset"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="预置位" android:textSize="12sp"
-                    app:chipBackgroundColor="#40000000"
-                    android:textColor="@color/white"/>
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/btnCruise"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="巡航" android:textSize="12sp"
-                    app:chipBackgroundColor="#40000000"
-                    android:textColor="@color/white"/>
-            </LinearLayout>
         </FrameLayout>
-
-        <View android:layout_height="8dp" android:layout_width="match_parent"/>
     </LinearLayout>
 </FrameLayout>

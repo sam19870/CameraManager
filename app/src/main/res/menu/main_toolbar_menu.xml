@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 顶部工具栏：全部使用项目内自带图标xml（ic_scan/ic_view_quilt/ic_add均已存在），避免引用android私有资源崩溃；文字跟随官方APP风格：扫描/分屏/添加。 -->
+<!-- 顶部工具栏：分屏 / 添加。局域网扫描功能移入「应用设置」里作为菜单项，避免用户误解WiFi图标含义。 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/action_scan"
-        android:icon="@drawable/ic_scan"
-        android:title="扫描"
-        app:showAsAction="always|withText"/>
     <item
         android:id="@+id/action_multiscreen"
         android:icon="@drawable/ic_view_quilt"

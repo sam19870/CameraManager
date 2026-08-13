@@ -7,13 +7,14 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.cameramanager.app.databinding.ActivityAppSettingsBinding
+import com.cameramanager.app.ui.scan.DeviceScanActivity
 import com.cameramanager.app.ui.tunnel.TunnelManageActivity
 
 /**
  * 应用设置（底部导航「设置」Tab入口）。
- * 包含：内网穿透通道管理、告警推送开关、后台服务开关、关于。
+ * 包含：局域网扫描、内网穿透通道管理、告警推送开关、后台服务开关、关于。
  *
- * 防闪退策略：onCreate 全 try-catch，所有跳转用 safeStart
+ * 防闪退策略：onCreate 全 try-catch，所有跳转用 safeStart（先resolveActivity）
  */
 class AppSettingsActivity : AppCompatActivity() {
 
@@ -31,6 +32,9 @@ class AppSettingsActivity : AppCompatActivity() {
             binding.cardTunnel.setOnClickListener {
                 safeStart(TunnelManageActivity.intent(this))
             }
+            binding.cardLanScan.setOnClickListener {
+                safeStart(Intent(this, DeviceScanActivity::class.java))
+            }
         }.onFailure { t ->
             Log.e(TAG, "onCreate failed: ${t.message}", t)
             toast("设置页初始化失败: ${t.message}")
@@ -39,8 +43,11 @@ class AppSettingsActivity : AppCompatActivity() {
     }
 
     private fun safeStart(intent: Intent) {
-        runCatching { startActivity(intent) }
-            .onFailure { t -> toast("打开失败: ${t.message ?: "未知错误"}") }
+        runCatching {
+            val c = intent.resolveActivity(packageManager)
+            if (c == null) { toast("目标未注册"); return }
+            startActivity(intent)
+        }.onFailure { t -> toast("打开失败: ${t.message ?: "未知错误"}") }
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

@@ -87,6 +87,7 @@
         <activity android:name=".ui.settings.AppSettingsActivity" />
         <activity android:name=".ui.settings.DeviceControlActivity" />
         <activity android:name=".ui.settings.NightVisionActivity" />
+        <activity android:name=".ui.settings.VideoAudioConfigActivity" />
 
         <service
             android:name=".service.CameraStreamService"

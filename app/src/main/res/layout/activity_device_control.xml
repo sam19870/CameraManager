@@ -39,6 +39,8 @@
                     <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
                     <include android:id="@+id/rowVideoParam" layout="@layout/item_setting_row"/>
                     <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
+                    <include android:id="@+id/rowVideoAudioCfg" layout="@layout/item_setting_row"/>
+                    <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
                     <include android:id="@+id/rowOsd" layout="@layout/item_setting_row"/>
                     <View style="@style/SettingDivider" android:layout_marginStart="16dp"/>
                     <include android:id="@+id/rowTalkMode" layout="@layout/item_setting_row"/>

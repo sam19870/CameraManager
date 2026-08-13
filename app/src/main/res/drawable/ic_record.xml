@@ -1,6 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 录像图标：实心红点 + 圆角外框，行业通用「REC」样式，不是奇怪的收件箱 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#FFFFFFFF"
-        android:pathData="M17,10.5V7c0,-0.55 -0.45,-1 -1,-1H4c-0.55,0 -1,0.45 -1,1v10c0,0.55 0.45,1 1,1h12c0.55,0 1,-0.45 1,-1v-3.5l4,4v-11l-4,4z"/>
+    <!-- 圆角矩形外框（与其他按钮背景风格一致） -->
+    <path android:fillColor="#22FFFFFF"
+        android:pathData="M20,5H4c-0.55,0 -1,0.45 -1,1v12c0,0.55 0.45,1 1,1h16c0.55,0 1,-0.45 1,-1V6c0,-0.55 -0.45,-1 -1,-1z"/>
+    <!-- 实心红色 REC 圆点（中心） -->
+    <path android:fillColor="#FF5252"
+        android:pathData="M12,10m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
 </vector>

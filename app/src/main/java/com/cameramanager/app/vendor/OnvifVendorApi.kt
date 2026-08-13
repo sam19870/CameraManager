@@ -85,6 +85,12 @@ object OnvifVendorApi : CameraVendorApi {
     override suspend fun uploadVoiceMessage(device: Device, audioFilePath: String) =
         ApiResult.Unsupported("设备端语音留言")
 
+    override suspend fun setSpeakerVolume(device: Device, volPct: Int) =
+        ApiResult.Unsupported("摄像头扬声音量设置（通用ONVIF协议未覆盖，请用官方APP）")
+
+    override suspend fun setMicVolume(device: Device, volPct: Int) =
+        ApiResult.Unsupported("摄像头收音音量设置（通用ONVIF协议未覆盖，请用官方APP）")
+
     override suspend fun setStatusLed(device: Device, on: Boolean) =
         ApiResult.Unsupported("状态指示灯")
 
@@ -118,6 +124,79 @@ object OnvifVendorApi : CameraVendorApi {
         ApiResult.Unsupported("固件检测升级")
 
     override suspend fun upgradeFirmware(device: Device) = ApiResult.Unsupported("固件升级")
+
+    // ---- 视频/音频参数读写（ONVIF）----
+    override suspend fun getVideoAudioConfig(device: Device): ApiResult<VideoAudioConfig> =
+        probeViaSdp(device)
+
+    override suspend fun setVideoAudioConfig(device: Device, cfg: VideoAudioConfig): ApiResult<Unit> =
+        ApiResult.Unsupported("视频参数写入（ONVIF通用协议暂不支持，请用厂商官方App设置）")
+
+    /** RTSP DESCRIBE -> SDP 解析得到编码/分辨率/帧率（ONVIF设备通用只读探测） */
+    private fun probeViaSdp(device: Device): ApiResult<VideoAudioConfig> {
+        val sdp = runCatching {
+            val s = java.net.Socket()
+            s.connect(java.net.InetSocketAddress(device.host, device.port), 1800)
+            s.soTimeout = 2000
+            val auth = if (!device.username.isNullOrEmpty()) {
+                val raw = "${device.username}:${device.password.orEmpty()}"
+                "Authorization: Basic " + android.util.Base64.encodeToString(
+                    raw.toByteArray(), android.util.Base64.NO_WRAP) + "\r\n"
+            } else ""
+            val path = device.mainRtspPath ?: device.rtspPath
+            val req = buildString {
+                append("DESCRIBE rtsp://${device.host}:${device.port}/$path RTSP/1.0\r\n")
+                append("CSeq: 3\r\nAccept: application/sdp\r\n")
+                append("User-Agent: CameraManager/1.0\r\n")
+                if (auth.isNotEmpty()) append(auth)
+                append("\r\n")
+            }
+            s.getOutputStream().write(req.toByteArray())
+            s.getOutputStream().flush()
+            val r = s.getInputStream().bufferedReader()
+            var line: String; var headerDone = false; var clen = 0
+            val sb = StringBuilder()
+            while (true) { line = r.readLine() ?: break
+                if (!headerDone) {
+                    if (line.startsWith("Content-Length:", true)) clen = line.substringAfter(':').trim().toIntOrNull() ?: 0
+                    if (line.isBlank()) headerDone = true
+                } else {
+                    sb.appendLine(line)
+                    if (clen in 1..sb.length) break
+                }
+            }
+            runCatching { s.close() }
+            sb.toString()
+        }.getOrDefault("")
+        if (sdp.isBlank()) return ApiResult.Success(VideoAudioConfig())
+
+        val codec = when {
+            sdp.contains("H265") || sdp.contains("h265") || sdp.contains("hevc", true) -> "H.265"
+            sdp.contains("H264") || sdp.contains("h264") -> "H.264"
+            else -> "H.264"
+        }
+        val (w, h) = Regex("""framesize\s*=\s*\d+\s+(\d+)-(\d+)""").find(sdp)?.groupValues
+            ?.let { it[1].toInt() to it[2].toInt() }
+            ?: (1920 to 1080)
+        val fps = Regex("""framerate\s*[:=]\s*(\d+)""").find(sdp)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: 25
+        val audioOn = sdp.contains("m=audio")
+        val aCodec = when {
+            sdp.contains("PCMA") -> "G.711A"
+            sdp.contains("PCMU") -> "G.711U"
+            sdp.contains("MPEG4-GENERIC") || sdp.contains("mp4a-latm") -> "AAC"
+            else -> "G.711A"
+        }
+        val sampleRate = Regex("""rtpmap\s*=\s*\d+\s+(?:PCMA|PCMU|AAC|OPUS|MPEG4-GENERIC)/(\d+)""")
+            .find(sdp)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 8000
+        return ApiResult.Success(VideoAudioConfig(
+            videoCodec = codec, width = w, height = h, frameRate = fps.coerceIn(1, 60),
+            audioEnabled = audioOn, audioCodec = aCodec, audioSampleRate = sampleRate,
+            availableResolutions = listOf(2560 to 1440, 2304 to 1296, 1920 to 1080, 1280 to 720, 640 to 360),
+            availableCodecs = listOf("H.264", "H.265"),
+            availableFrameRates = listOf(15, 20, 25, 30)
+        ))
+    }
 
     override suspend fun selfCheck(device: Device) = ApiResult.Success(
         CameraVendorApi.SelfCheckReport(

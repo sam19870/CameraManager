@@ -1,6 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 云台「左」——TP-LINK 乐橙官方风格：实心三角箭头 + 圆角外框 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24">
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <path android:fillColor="#33FFFFFF" android:strokeColor="#66FFFFFF"
+        android:strokeWidth="0.8"
+        android:pathData="M14,2.5c-4.14,0 -7.5,3.36 -7.5,7.5v8c0,4.14 3.36,7.5 7.5,7.5s7.5,-3.36 7.5,-7.5v-8c0,-4.14 -3.36,-7.5 -7.5,-7.5z"/>
+    <!-- 实心向左三角箭头 -->
     <path android:fillColor="#FFFFFFFF"
-        android:pathData="M15.41,7.41L14,6l-6,6 6,6 1.41,-1.41L10.83,12z"/>
+        android:pathData="M7.5,14 L15.5,7.5 V11 H20.5 V17 H15.5 V20.5 Z"/>
+    <!-- 右侧加粗底座 -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M20.5,10 H22 V18 H20.5 Z"/>
 </vector>

@@ -11,15 +11,16 @@ import java.io.File
 import java.util.Date
 
 /**
- * 全局防闪退护网（v2）：
+ * 全局防闪退护网（v3 硬兜底）：
  *
- *  1. ActivityLifecycleCallbacks 记录前台 Activity；
- *  2. 接管主线程未捕获异常：Toast 提示 + 关闭出问题页面 + 恢复主循环，
- *     并且加「6秒熔断」：相同异常 6 秒内不再重复 toast，防止点按钮反复点导致
- *     Handler.post 积压而出现二次崩溃；
- *  3. 堆栈写入 filesDir/last_crash.log；
- *  4. 非主线程异常仅记录日志；
- *  5. 通过 PackageManager.resolveActivity 的二次校验在调用端（safeStart）。
+ *  1. ActivityLifecycleCallbacks 记录前台 Activity 与前台 resumedActivity；
+ *  2. 接管主线程未捕获异常：
+ *     - 如果异常 Activity 有 windowToken 且 != resumed → 仅 finish 出问题的 Activity，回退到已存在的 resumedActivity
+ *     - 否则 finish 出问题 Activity + 回退到 MainActivity（若进程存活就重开）
+ *     - 永不进入"死循环重跑 Looper"模式（那会导致黑屏卡死）；
+ *  3. 6 秒熔断，同一异常 6 秒内不重复 toast；
+ *  4. 堆栈写入 filesDir/last_crash.log；
+ *  5. 子线程异常吞掉。
  */
 object CrashGuard {
 
@@ -27,7 +28,10 @@ object CrashGuard {
     private const val FUSE_MS = 6_000L
 
     @Volatile
-    var currentActivity: Activity? = null
+    var resumedActivity: Activity? = null
+        private set
+    @Volatile
+    var createdActivity: Activity? = null
         private set
 
     private var installed = false
@@ -40,14 +44,15 @@ object CrashGuard {
         installed = true
 
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityCreated(a: Activity, s: Bundle?) { currentActivity = a }
-            override fun onActivityStarted(a: Activity) { currentActivity = a }
-            override fun onActivityResumed(a: Activity) { currentActivity = a }
+            override fun onActivityCreated(a: Activity, s: Bundle?) { createdActivity = a }
+            override fun onActivityStarted(a: Activity) {}
+            override fun onActivityResumed(a: Activity) { resumedActivity = a; createdActivity = a }
             override fun onActivityPaused(a: Activity) {}
             override fun onActivityStopped(a: Activity) {}
             override fun onActivitySaveInstanceState(a: Activity, s: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {
-                if (currentActivity === a) currentActivity = null
+                if (resumedActivity === a) resumedActivity = null
+                if (createdActivity === a) createdActivity = null
             }
         })
 
@@ -72,14 +77,16 @@ object CrashGuard {
                         }
                     }
                 }
+                val bad = createdActivity
+                val good = resumedActivity
                 main.post {
-                    runCatching { currentActivity?.finish() }
-                }
-                while (true) {
-                    try {
-                        Looper.loop()
-                    } catch (e2: Throwable) {
-                        Log.e(TAG, "re-loop caught: ${shortMsg(e2)}", e2)
+                    runCatching {
+                        if (bad != null && bad !== good) {
+                            bad.finish()
+                        } else if (good != null) {
+                            // 当前页出了异常，finish掉当前让用户回退
+                            good.finish()
+                        }
                     }
                 }
             }

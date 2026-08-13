@@ -47,7 +47,7 @@ data class Device(
     val mirrored: Boolean = false,
     /** Selected stream profile: 0=主码流, 1=子码流, 2=流畅. */
     val streamProfile: Int = 1,
-    /** Vendor: "generic", "tapo", "imou". */
+    /** Vendor: "generic", "tapo", "imou", "dahua", "hikvision", "ezviz", "uniview", "xiongmai". */
     val vendor: String = "generic",
     /** Night vision mode: 0=auto(smart), 1=ir(infrared), 2=color(full-color). */
     val nightVision: Int = 0,
@@ -68,20 +68,45 @@ data class Device(
     /** 设备自身公网 ONVIF 端口。 */
     val publicOnvifPort: Int = 0,
     /** AI 智能追踪（人形自动跟随）开关。 */
-    val autoTrack: Boolean = false
+    val autoTrack: Boolean = false,
+    /**
+     * 主码流（原画）RTSP 路径。
+     *  回放和下载一律用此路径，确保最高分辨率（摄像头里设置的录制分辨率）。
+     *  空时回退到 [rtspPath]。
+     */
+    val mainRtspPath: String? = null,
+    /**
+     * 子码流（流畅）RTSP 路径。
+     *  预览默认用此路径，避免卡顿和流量过大。
+     *  空时回退到 [rtspPath]。
+     */
+    val subRtspPath: String? = null
 ) : Parcelable {
     /** Build the full RTSP URL using the given host/port/path. */
     fun rtspUrl(useHost: String = host, usePort: Int = port): String {
+        return rtspUrlForProfile(streamProfile, useHost, usePort)
+    }
+
+    /**
+     * 根据 profile 选对应的码流路径生成 URL。
+     *  profile=0(高清) 用主码流；=1(标清)/=2(流畅) 用子码流。
+     *  回放和下载一律传 profile=0 拿原画。
+     */
+    fun rtspUrlForProfile(profile: Int, useHost: String = host, usePort: Int = port): String {
+        val path = when (profile) {
+            0 -> mainRtspPath?.ifBlank { null } ?: rtspPath
+            else -> subRtspPath?.ifBlank { null } ?: rtspPath
+        }
         val auth = if (!username.isNullOrEmpty()) {
             "$username:${password ?: ""}@"
         } else ""
-        return "rtsp://$auth$useHost:$usePort/$rtspPath"
+        return "rtsp://$auth$useHost:$usePort/$path"
     }
 
     /** Human-readable stream profile label. */
     fun profileLabel(): String = when (streamProfile) {
-        0 -> "高清(主码流)"
-        1 -> "标清(子码流)"
+        0 -> "原画(主码流·最高分辨率)"
+        1 -> "标清(子码流·推荐预览)"
         else -> "流畅"
     }
 }

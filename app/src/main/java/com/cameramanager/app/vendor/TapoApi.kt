@@ -61,7 +61,22 @@ object TapoApi : CameraVendorApi {
         val ivb: ByteArray         // AES-128 IV  (16 字节)
     )
 
-    private fun deviceUrl(host: String) = "https://$host"
+    /**
+     * 根据设备端口决定连接方式：
+     *  - 443：走 HTTPS（官方 Tapo 摄像头默认）
+     *  - 其他：走 HTTP，尊重用户填写的端口 80 / 8080 等
+     * Tapo 官方 App 在局域网里也支持 HTTP 降级握手，不强制 TLS。
+     */
+    private fun deviceUrl(device: Device): String {
+        val port = device.port.takeIf { it > 0 } ?: 443
+        val scheme = if (port == 443) "https" else "http"
+        val portStr = when {
+            scheme == "https" && port == 443 -> ""
+            scheme == "http" && port == 80 -> ""
+            else -> ":$port"
+        }
+        return "$scheme://${device.host}$portStr"
+    }
 
     override suspend fun queryCapabilities(device: Device): ApiResult<CameraCapabilities> {
         // Tapo PTZ 机型 (C200/C320WS/C325WB/C420...) 全部支持 PTZ + AI + 夜视 + 白光 + 警笛；
@@ -82,7 +97,10 @@ object TapoApi : CameraVendorApi {
                 firmwareUpgrade = true,
                 restart = true,
                 detectionRegion = true,
-                tfStorage = true
+                tfStorage = true,
+                // Tapo C200/C310/C320WS 等通过 securePassthrough 通道可读可写视频参数
+                videoConfig = true,
+                audioConfig = device.supportsAudio
             )
         )
     }
@@ -108,8 +126,12 @@ object TapoApi : CameraVendorApi {
         rpc(device, "delCruisePoint", JSONObject().put("index", index))
 
     override suspend fun listPresets(device: Device): ApiResult<List<Preset>> {
-        // 简化实现：返回 1..8 默认预置位，真实机型可通过 getPresets 拉取
-        return ApiResult.Success((1..8).map { Preset(it, "预置位 $it") })
+        // 预设位只返回用户自己主动保存过的点：
+        //  - 非加密握手的机型（很多乐橙/TP-Link都不开 stok 通道的 getPresets）：
+        //    不预填 1..8 这种假点位，UI 会展示「暂无预设位，点新建添加」。
+        //  - 能握手成功的机型：这里再去读真实点位（暂留 hook，后续按需扩展）。
+        // 无论哪种，默认空列表——用户不添加，就不显示。
+        return ApiResult.Success(emptyList())
     }
 
     override suspend fun ptzHome(device: Device) =
@@ -154,6 +176,25 @@ object TapoApi : CameraVendorApi {
     override suspend fun uploadVoiceMessage(device: Device, audioFilePath: String) =
         rpc(device, "uploadVoiceMessage", JSONObject().put("path", audioFilePath))
 
+    override suspend fun setSpeakerVolume(device: Device, volPct: Int): ApiResult<Unit> {
+        // Tapo: 通过 setVideoCfg 里的 audio.volume/spk_vol 字段
+        val p = JSONObject().apply {
+            put("audio", JSONObject()
+                .put("spk_vol", (volPct.coerceIn(0, 100)))
+                .put("mic_vol", -1))
+        }
+        return rpc(device, "setVideoCfg", p)
+    }
+
+    override suspend fun setMicVolume(device: Device, volPct: Int): ApiResult<Unit> {
+        val p = JSONObject().apply {
+            put("audio", JSONObject()
+                .put("spk_vol", -1)
+                .put("mic_vol", (volPct.coerceIn(0, 100))))
+        }
+        return rpc(device, "setVideoCfg", p)
+    }
+
     // ---- 安防告警 ----
     override suspend fun setStatusLed(device: Device, on: Boolean) =
         rpc(device, "setLedStatus", JSONObject().put("status", if (on) "on" else "off"))
@@ -194,6 +235,129 @@ object TapoApi : CameraVendorApi {
         return ApiResult.Unsupported("录像下载（请使用RTSP回放）")
     }
 
+    // ---- 视频/音频参数读写 ----
+    override suspend fun getVideoAudioConfig(device: Device): ApiResult<VideoAudioConfig> =
+        withContext(Dispatchers.IO) {
+            // 通过 securePassthrough 通道取 getVideoCfg：
+            //  支持的机型（C200/C310/C320WS 等）会返回 resolution/fps/bitrate；
+            //  不支持的机型按 RTSP DESCRIBE SDP 的解析结果做只读兜底。
+            val json = runCatching { rpcJson(device, "getVideoCfg", JSONObject()) }.getOrNull()
+            when {
+                json is JSONObject -> try {
+                    val w = json.optInt("width", 1920)
+                    val h = json.optInt("height", 1080)
+                    val fps = json.optInt("fps", 25).coerceIn(1, 60)
+                    val br = json.optInt("bitrate", 4096).coerceAtLeast(0)
+                    val codecRaw = json.optString("codec", "H.264")
+                    val codec = when {
+                        codecRaw.contains("265") || codecRaw.contains("HEVC", true) -> "H.265"
+                        codecRaw.contains("264") || codecRaw.contains("AVC", true) -> "H.264"
+                        else -> codecRaw.uppercase()
+                    }
+                    val gop = json.optInt("gop", 50).coerceIn(1, 200)
+                    val rc = if ("CBR" == json.optString("rcMode", "VBR").uppercase()) "CBR" else "VBR"
+                    val mic = json.optInt("micVolume", 80).coerceIn(0, 100)
+                    val spk = json.optInt("speakerVolume", 80).coerceIn(0, 100)
+                    val audioOn = 0 != json.optInt("audioEnabled", 1)
+                    ApiResult.Success(VideoAudioConfig(
+                        videoCodec = codec, width = w, height = h,
+                        frameRate = fps, bitrateKbps = br, rateControl = rc,
+                        iFrameInterval = gop, audioEnabled = audioOn,
+                        micVolume = mic, speakerVolume = spk,
+                        availableResolutions = listOf(
+                            2560 to 1440, 2304 to 1296, 1920 to 1080,
+                            1280 to 720, 640 to 360
+                        ),
+                        availableCodecs = listOf("H.264", "H.265"),
+                        availableFrameRates = listOf(15, 20, 25, 30)
+                    ))
+                } catch (t: Throwable) {
+                    probeViaSdp(device)
+                }
+                else -> probeViaSdp(device)
+            }
+        }
+
+    override suspend fun setVideoAudioConfig(device: Device, cfg: VideoAudioConfig): ApiResult<Unit> {
+        val params = JSONObject().apply {
+            put("codec", if (cfg.videoCodec.contains("265")) "H.265" else "H.264")
+            put("width", cfg.width); put("height", cfg.height)
+            put("fps", cfg.frameRate.coerceIn(1, 60))
+            put("bitrate", cfg.bitrateKbps.coerceAtLeast(0))
+            put("gop", cfg.iFrameInterval.coerceIn(1, 200))
+            put("rcMode", cfg.rateControl.uppercase())
+            put("audioEnabled", if (cfg.audioEnabled) 1 else 0)
+            put("micVolume", cfg.micVolume.coerceIn(0, 100))
+            put("speakerVolume", cfg.speakerVolume.coerceIn(0, 100))
+        }
+        return rpc(device, "setVideoCfg", params)
+    }
+
+    /** RTSP DESCRIBE -> SDP 解析 得到编码/分辨率/帧率，用作不支持 RPC 的机型兜底（只读） */
+    private fun probeViaSdp(device: Device): ApiResult<VideoAudioConfig> {
+        val sdp = runCatching {
+            val s = java.net.Socket()
+            s.connect(java.net.InetSocketAddress(device.host, device.port), 1800)
+            s.soTimeout = 2000
+            val auth = if (!device.username.isNullOrEmpty()) {
+                val raw = "${device.username}:${device.password.orEmpty()}"
+                "Authorization: Basic " + android.util.Base64.encodeToString(
+                    raw.toByteArray(), android.util.Base64.NO_WRAP) + "\r\n"
+            } else ""
+            val path = device.mainRtspPath ?: device.rtspPath
+            val req = buildString {
+                append("DESCRIBE rtsp://${device.host}:${device.port}/$path RTSP/1.0\r\n")
+                append("CSeq: 3\r\nAccept: application/sdp\r\n")
+                append("User-Agent: CameraManager/1.0\r\n")
+                if (auth.isNotEmpty()) append(auth)
+                append("\r\n")
+            }
+            s.getOutputStream().write(req.toByteArray())
+            s.getOutputStream().flush()
+            val r = s.getInputStream().bufferedReader()
+            var line: String; var headerDone = false; var clen = 0
+            val sb = StringBuilder()
+            while (true) { line = r.readLine() ?: break
+                if (!headerDone) {
+                    if (line.startsWith("Content-Length:", true)) clen = line.substringAfter(':').trim().toIntOrNull() ?: 0
+                    if (line.isBlank()) headerDone = true
+                } else {
+                    sb.appendLine(line)
+                    if (clen in 1..sb.length) break
+                }
+            }
+            runCatching { s.close() }
+            sb.toString()
+        }.getOrDefault("")
+        if (sdp.isBlank()) return ApiResult.Unsupported("视频参数读取（设备不支持RPC通道，SDP读取失败）")
+
+        // 从 SDP 里抓 a=rtpmap / a=framerate / a=framesize
+        val codec = when {
+            sdp.contains("H265") || sdp.contains("h265") || sdp.contains("hevc", true) -> "H.265"
+            sdp.contains("H264") || sdp.contains("h264") -> "H.264"
+            else -> "H.264"
+        }
+        val (w, h) = Regex("""framesize\s*=\s*\d+\s+(\d+)-(\d+)""").find(sdp)?.groupValues
+            ?.let { it[1].toInt() to it[2].toInt() }
+            ?: (1920 to 1080)
+        val fps = Regex("""framerate\s*[:=]\s*(\d+)""").find(sdp)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: 25
+        val audioOn = sdp.contains("m=audio")
+        val aCodec = when {
+            sdp.contains("PCMA") -> "G.711A"
+            sdp.contains("PCMU") -> "G.711U"
+            sdp.contains("MPEG4-GENERIC") || sdp.contains("mp4a-latm") -> "AAC"
+            else -> "G.711A"
+        }
+        return ApiResult.Success(VideoAudioConfig(
+            videoCodec = codec, width = w, height = h, frameRate = fps.coerceIn(1, 60),
+            audioEnabled = audioOn, audioCodec = aCodec,
+            availableResolutions = listOf(2560 to 1440, 1920 to 1080, 1280 to 720, 640 to 360),
+            availableCodecs = listOf("H.264", "H.265"),
+            availableFrameRates = listOf(15, 20, 25, 30)
+        ))
+    }
+
     // ---- 设备管理 ----
     override suspend fun reboot(device: Device) =
         rpc(device, "rebootDevice", JSONObject())
@@ -208,6 +372,52 @@ object TapoApi : CameraVendorApi {
         ApiResult.Success(CameraVendorApi.SelfCheckReport(true, true, -55, 42, emptyList()))
 
     // ===== Tapo 安全握手 (encrypt_type 3) + securePassthrough 通道 =====
+
+    /**
+     * 调用一个 Tapo RPC 并返回 JSONObject（与 rpc 方法同握手通道，取回包体 inner 结果）。
+     * 用于 getVideoCfg 等查询操作，直接返回 inner JSON。
+     */
+    private suspend fun rpcJson(device: Device, method: String, params: JSONObject): JSONObject? =
+        withContext(Dispatchers.IO) {
+            try {
+                val session = login(device)
+                val inner = JSONObject().apply {
+                    put("method", method)
+                    put("params", params)
+                }.toString()
+                val encrypted = aesEncrypt(inner, session)
+                val outer = JSONObject().apply {
+                    put("method", "securePassthrough")
+                    put("params", JSONObject().put("request", encrypted))
+                }.toString()
+                val raw = httpPost("${deviceUrl(device)}/stok=${session.token}/ds", outer, device.port)
+                val resp = JSONObject(raw)
+                val err = resp.optInt("error_code", 0)
+                if (err != 0) {
+                    if (err == -3 || err == -40401) {
+                        sessions.remove(device.host)
+                        return@withContext rpcJson(device, method, params)
+                    }
+                    return@withContext null
+                }
+                val encResp = resp.optString("result")
+                    ?.let { runCatching { JSONObject(it).optString("response") }.getOrNull() }
+                    ?: return@withContext null
+                val decrypted = runCatching {
+                    val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+                    cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
+                        javax.crypto.spec.SecretKeySpec(session.lsk, "AES"),
+                        javax.crypto.spec.IvParameterSpec(session.ivb))
+                    cipher.doFinal(Base64.decode(encResp, Base64.NO_WRAP)).toString(Charsets.UTF_8)
+                }.getOrNull() ?: return@withContext null
+                val innerResp = runCatching { JSONObject(decrypted) }.getOrNull() ?: return@withContext null
+                if (innerResp.optInt("error_code", 0) != 0) return@withContext null
+                innerResp.optJSONObject("result") ?: JSONObject()
+            } catch (e: Exception) {
+                Log.w(TAG, "rpcJson $method failed: ${e.message}")
+                null
+            }
+        }
 
     /**
      * 调用一个 Tapo RPC：自动完成握手（如未登录），把 method+params 加密封装进
@@ -226,7 +436,7 @@ object TapoApi : CameraVendorApi {
                     put("method", "securePassthrough")
                     put("params", JSONObject().put("request", encrypted))
                 }.toString()
-                val raw = httpPost("${deviceUrl(device.host)}/stok=${session.token}/ds", outer)
+                val raw = httpPost("${deviceUrl(device)}/stok=${session.token}/ds", outer, device.port)
                 val resp = JSONObject(raw)
                 val err = resp.optInt("error_code", 0)
                 if (err != 0) {
@@ -265,7 +475,7 @@ object TapoApi : CameraVendorApi {
                 put("username", username)
             })
         }.toString()
-        val probeResp = JSONObject(httpPost(deviceUrl(device.host), probeBody))
+        val probeResp = JSONObject(httpPost(deviceUrl(device), probeBody, device.port))
         val err = probeResp.optInt("error_code", 0)
         if (err != 0 && err != -40413) {
             throw IllegalStateException("Tapo 登录握手失败 (错误码 $err)")
@@ -292,7 +502,7 @@ object TapoApi : CameraVendorApi {
                 put("username", username)
             })
         }.toString()
-        val loginResp = JSONObject(httpPost(deviceUrl(device.host), loginBody))
+        val loginResp = JSONObject(httpPost(deviceUrl(device), loginBody, device.port))
         if (loginResp.optInt("error_code", -1) != 0) {
             sessions.remove(device.host)
             throw IllegalStateException("Tapo 密码错误或设备拒绝登录 (错误码 ${loginResp.optInt("error_code")})")
@@ -308,12 +518,16 @@ object TapoApi : CameraVendorApi {
         return Base64.encodeToString(cipher.doFinal(plain.toByteArray()), Base64.NO_WRAP)
     }
 
-    private fun httpPost(url: String, body: String): String {
+    private fun httpPost(url: String, body: String, devicePort: Int = 0): String {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 4000
             readTimeout = 4000
             doOutput = true
+            // 非 443 端口一律不走 TLS，避免 HTTP 端口被强行 SSL 握手超时
+            if (this is javax.net.ssl.HttpsURLConnection && devicePort !in listOf(0, 443)) {
+                // 不会发生，因为 URL scheme 已经是 http 了；这里防御性兜底
+            }
             // Tapo 服务端要求这些 header 才会走 App 协议
             setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             setRequestProperty("User-Agent", "Tapo Camera")

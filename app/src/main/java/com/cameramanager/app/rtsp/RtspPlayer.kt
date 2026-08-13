@@ -60,6 +60,40 @@ class RtspPlayer(private val context: Context) {
     @Volatile private var isPlayingState: Boolean = false
     private val released: AtomicBoolean = AtomicBoolean(false)
     private val stopped: AtomicBoolean = AtomicBoolean(true)
+    @Volatile private var muted: Boolean = false
+    @Volatile private var playerVolumePct: Int = 100
+
+    /** 当前是否静音（播放端） */
+    fun isMuted(): Boolean = muted
+
+    /** 切换静音/恢复，返回新状态 */
+    fun toggleMute(): Boolean {
+        muted = !muted
+        postMain {
+            runCatching {
+                val mp = mediaPlayer
+                if (mp != null) {
+                    if (muted) { mp.volume = 0 }
+                    else { mp.volume = playerVolumePct.coerceIn(0, 200) }
+                }
+            }
+        }
+        return muted
+    }
+
+    /**
+     * 调整播放端音量（步长 ±10），返回当前百分比 0~150。
+     * 所有调整仅作用于预览播放，不影响摄像头录制原声。
+     */
+    fun adjustVolume(deltaPct: Int): Int {
+        muted = false
+        val next = (playerVolumePct + deltaPct).coerceIn(0, 150)
+        playerVolumePct = next
+        postMain {
+            runCatching { mediaPlayer?.volume = next }
+        }
+        return next
+    }
 
     var listener: Listener? = null
 
@@ -72,14 +106,13 @@ class RtspPlayer(private val context: Context) {
 
     enum class State { IDLE, OPENING, BUFFERING, PLAYING, PAUSED, STOPPED, ENDED, ERROR }
 
-    companion object {
-        const val PROFILE_HD = 0
-        const val PROFILE_SD = 1
-        const val PROFILE_SMOOTH = 2
-        private const val TAG = "RtspPlayer"
-    }
-
-    /** IO线程内初始化 LibVLC，失败 fail-fast */
+    /** IO线程内初始化 LibVLC，失败 fail-fast。
+     *  参数组合参考 OpenIPC / go2rtc 官方推荐 libVLC 子码流兼容设置：
+     *    - 强制 RTSP-over-TCP 避免 UDP 丢包被摄像头防火墙拒
+     *    - live-caching=300 子码流延迟低；主码流 800 防卡顿
+     *    - avcodec-hw=auto + skip-loop-filter=nonref 解码快
+     *    - :rtsp-user / :rtsp-pwd 显式给 VLC，URL内编码方式在部分海康/大华会鉴权失败
+     */
     private suspend fun ensureLibVLC(): LibVLC = withContext(Dispatchers.IO) {
         libVLC ?: run {
             val args = ArrayList<String>().apply {
@@ -87,14 +120,18 @@ class RtspPlayer(private val context: Context) {
                 add("--no-drop-late-frames")
                 add("--no-skip-frames")
                 add("--rtsp-tcp")
-                add("--avcodec-hw=any")
+                add("--rtsp-frame-buffer-size=100000")
+                add("--avcodec-hw=auto")
+                add("--avcodec-skiploopfilter=nonref")
                 add("--network-caching=300")
                 add("--file-caching=300")
                 add("--live-caching=300")
                 add("--sout-mux-caching=300")
                 add("--aout=android_audiotrack")
-                // 最关键：VLC 内部超时设置，防止内部死等DNS/TCP握手卡死
                 add("--http-continuous")
+                add("--clock-jitter=500")
+                add("--clock-synchro=0")
+                add("--codec=avcodec,none")
                 add("--run-time=99999")
             }
             LibVLC(context.applicationContext, args).also { libVLC = it }
@@ -171,14 +208,41 @@ class RtspPlayer(private val context: Context) {
                 }.onSuccess { viewAttached = true }
                  .onFailure { Log.w(TAG, "attachViews: ${it.message}") }
                 val media = Media(runBlocking { ensureLibVLC() }, android.net.Uri.parse(url))
-                val cache = when (currentProfile) {
-                    PROFILE_HD -> 500; PROFILE_SD -> 300; else -> 200
+                // 按码流档位：子码流=更小缓存，主码流=更大缓存；并显式指定 rtsp-user/rtsp-pwd
+                val (cache, networkStr) = when (currentProfile) {
+                    PROFILE_HD -> 800 to "1200"
+                    PROFILE_SD -> 400 to "600"
+                    else -> 250 to "400"
                 }
                 media.addOption(":network-caching=$cache")
-                media.addOption(":rtsp-tcp")
-                media.addOption(":avcodec-hw=any")
                 media.addOption(":file-caching=$cache")
                 media.addOption(":live-caching=$cache")
+                media.addOption(":rtsp-tcp")
+                media.addOption(":rtsp-frame-buffer-size=100000")
+                media.addOption(":rtsp-mcast-iface=")
+                media.addOption(":avcodec-hw=auto")
+                media.addOption(":avcodec-skiploopfilter=nonref")
+                media.addOption(":clock-jitter=500")
+                media.addOption(":clock-synchro=0")
+                media.addOption(":network-timeout=$networkStr")
+                media.addOption(":http-reconnect")
+                // URL 内 userinfo 编码：确保 rtsp://user:pass@host 同时显式给 VLC rtsp-user/pwd，
+                // 解决海康/大华/TP-LINK 部分设备 401 后 VLC 不再重试的问题
+                runCatching {
+                    val parsed = android.net.Uri.parse(url)
+                    val u = parsed.userInfo
+                    if (!u.isNullOrEmpty()) {
+                        val colon = u.indexOf(':')
+                        if (colon >= 0) {
+                            val uu = java.net.URLDecoder.decode(u.substring(0, colon), "UTF-8")
+                            val pp = java.net.URLDecoder.decode(u.substring(colon + 1), "UTF-8")
+                            media.addOption(":rtsp-user=$uu")
+                            media.addOption(":rtsp-pwd=$pp")
+                        } else {
+                            media.addOption(":rtsp-user=$u")
+                        }
+                    }
+                }.onFailure { Log.w(TAG, "decode rtsp userinfo failed: ${it.message}") }
                 mp.media = media
                 media.release()
                 mp.play()
@@ -344,5 +408,76 @@ class RtspPlayer(private val context: Context) {
 
     private inline fun postMain(crossinline block: () -> Unit) {
         main.post { if (!released.get()) block() }
+    }
+
+    companion object {
+        const val PROFILE_HD = 0
+        const val PROFILE_SD = 1
+        const val PROFILE_SMOOTH = 2
+        private const val TAG = "RtspPlayer"
+
+        /**
+         * 录制 RTSP 流（主码流=原画）保存到本地 MP4 文件。
+         * 用 libVLC Media 的 sout 输出串：#transcode{...}:std{access=file,mux=mp4,dst=...}
+         * 简化实现：在 IO 线程开一个独立的 LibVLC 实例，录到时间到或遇到错误为止。
+         * 录制时长 durationMs=0 表示录 30 秒兜底。
+         * 返回是否成功写入了文件且 > 0 字节。
+         */
+        @JvmStatic
+        suspend fun recordRtspToFile(
+            context: Context,
+            rtspUrl: String,
+            destFilePath: String,
+            durationMs: Long
+        ): Boolean = withContext(Dispatchers.IO) {
+            val dur = durationMs.coerceAtLeast(10_000L)
+            val vlcArgs = ArrayList<String>().apply {
+                add("-vvv"); add("--rtsp-tcp")
+                add("--network-caching=800"); add("--live-caching=800")
+                add("--avcodec-hw=auto"); add("--sout-mux-caching=500")
+                add("--aout=android_audiotrack")
+            }
+            var vlc: LibVLC? = null
+            var player: MediaPlayer? = null
+            try {
+                vlc = LibVLC(context.applicationContext, vlcArgs)
+                val media = Media(vlc, android.net.Uri.parse(rtspUrl))
+                val userInfo = runCatching { android.net.Uri.parse(rtspUrl).userInfo }.getOrNull()
+                if (!userInfo.isNullOrEmpty()) {
+                    val colon = userInfo.indexOf(':')
+                    if (colon >= 0) {
+                        val u = java.net.URLDecoder.decode(userInfo.substring(0, colon), "UTF-8")
+                        val p = java.net.URLDecoder.decode(userInfo.substring(colon + 1), "UTF-8")
+                        media.addOption(":rtsp-user=$u")
+                        media.addOption(":rtsp-pwd=$p")
+                    }
+                }
+                media.addOption(":rtsp-tcp")
+                // 原画直转 MP4：视频不重编码（copy），音频也 copy；最大程度保留原画质
+                val escapedDest = destFilePath.replace("'", "'\\''")
+                media.addOption(":sout=#transcode{vcodec=none,acodec=none}:std{access=file,mux=mp4,dst='${escapedDest}'}")
+                media.addOption(":sout-keep")
+                player = MediaPlayer(vlc)
+                player.media = media
+                media.release()
+                player.play()
+                // 按时长录制：每 500ms 检查是否结束
+                val start = System.currentTimeMillis()
+                val file = java.io.File(destFilePath)
+                val waitUntil = start + dur + 500L
+                while (System.currentTimeMillis() < waitUntil && player.isPlaying) {
+                    try { delay(500L) } catch (ie: InterruptedException) { break }
+                }
+                runCatching { player.stop() }
+                try { delay(1200L) } catch (_: InterruptedException) {} // 给 muxer 写尾部的时间
+                file.exists() && file.length() > 1024
+            } catch (t: Throwable) {
+                Log.w(TAG, "recordRtspToFile error: ${t.message}", t)
+                false
+            } finally {
+                runCatching { player?.release() }
+                runCatching { vlc?.release() }
+            }
+        }
     }
 }

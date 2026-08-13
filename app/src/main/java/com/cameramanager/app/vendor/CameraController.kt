@@ -103,6 +103,16 @@ class CameraController(private val device: Device) {
     suspend fun uploadVoiceMessage(path: String): CameraCommandResult =
         guard(CameraCapabilities::voiceMessage) { api.uploadVoiceMessage(device, path) }
 
+    suspend fun setSpeakerVolume(volPct: Int): CameraCommandResult =
+        guard(CameraCapabilities::audioConfig) {
+            api.setSpeakerVolume(device, volPct.coerceIn(0, 100))
+        }
+
+    suspend fun setMicVolume(volPct: Int): CameraCommandResult =
+        guard(CameraCapabilities::audioConfig) {
+            api.setMicVolume(device, volPct.coerceIn(0, 100))
+        }
+
     // ---- Alarm ----
     suspend fun setWhiteLight(on: Boolean): CameraCommandResult =
         guard(CameraCapabilities::whiteLight) { api.setWhiteLight(device, on) }

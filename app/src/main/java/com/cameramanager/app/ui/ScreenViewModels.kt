@@ -37,6 +37,11 @@ class PreviewViewModel(private val repo: Repository) : ViewModel() {
         val d = _device.value ?: return
         viewModelScope.launch { repo.updateDevice(d.copy(streamProfile = profile)) }
     }
+
+    fun updatePrivacy(enabled: Boolean) {
+        val d = _device.value ?: return
+        // 暂无 Device 隐私遮蔽持久化字段；此处保留接口以便 UI 编译通过，实际遮蔽是发命令给摄像头实时生效
+    }
 }
 
 class ScanViewModel(private val repo: Repository) : ViewModel() {

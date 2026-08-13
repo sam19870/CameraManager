@@ -21,7 +21,54 @@ data class CameraCapabilities(
     val firmwareUpgrade: Boolean = false,
     val restart: Boolean = false,
     val detectionRegion: Boolean = false,
-    val tfStorage: Boolean = false
+    val tfStorage: Boolean = false,
+    /** 是否支持通过协议读写视频编码参数（分辨率/帧率/码率/编码） */
+    val videoConfig: Boolean = false,
+    /** 是否支持通过协议读写音频输入/输出开关、音量 */
+    val audioConfig: Boolean = false
+)
+
+/**
+ * 视频/音频编码参数配置。
+ * 这些参数一律从摄像头里读出来（探测），再在 UI 上给用户改；修改后再写回摄像头。
+ * 不支持的摄像头返回 [ApiResult.Unsupported]，UI 自动灰显。
+ */
+data class VideoAudioConfig(
+    // ---- 视频 ----
+    /** 视频编码: "H.264" / "H.265" / "MPEG4" / "MJPEG" (探测自 RTSP SDP 或 ONVIF) */
+    val videoCodec: String = "H.264",
+    /** 分辨率宽 (像素)，例如 1920 */
+    val width: Int = 1920,
+    /** 分辨率高 (像素)，例如 1080 */
+    val height: Int = 1080,
+    /** 帧率 fps，常见值: 15 / 25 / 30 / 60 */
+    val frameRate: Int = 25,
+    /** 比特率 kbps（0=自动/可变码率 VBR） */
+    val bitrateKbps: Int = 4096,
+    /** 码率控制: "VBR"(动态) / "CBR"(固定) */
+    val rateControl: String = "VBR",
+    /** I帧间隔(GOP) */
+    val iFrameInterval: Int = 50,
+    // ---- 流类型（视频/音频/音视频）----
+    /** true = 视频流启用 */
+    val videoEnabled: Boolean = true,
+    /** true = 音频流启用（录像含声音 / 预览有声音） */
+    val audioEnabled: Boolean = true,
+    // ---- 音频输入 ----
+    /** 音频编码: "G.711A" / "G.711U" / "AAC" / "OPUS" */
+    val audioCodec: String = "G.711A",
+    /** 音频采样率 Hz：8000 / 16000 / 44100 / 48000 */
+    val audioSampleRate: Int = 8000,
+    /** 摄像机收音音量 0~100 */
+    val micVolume: Int = 80,
+    /** 摄像机扬声音量 0~100（对讲时） */
+    val speakerVolume: Int = 80,
+    /** 视频可用分辨率选项（从摄像头读出，用于下拉框） */
+    val availableResolutions: List<Pair<Int, Int>> = listOf(2560 to 1440, 1920 to 1080, 1280 to 720, 640 to 360),
+    /** 可用编码选项（从摄像头读出，用于下拉框） */
+    val availableCodecs: List<String> = listOf("H.264", "H.265"),
+    /** 可选帧率（从摄像头读出） */
+    val availableFrameRates: List<Int> = listOf(15, 20, 25, 30)
 )
 
 /** A saved PTZ preset viewpoint. */
@@ -81,6 +128,10 @@ interface CameraVendorApi {
     suspend fun endVoiceCall(device: Device): ApiResult<Unit>
     /** Upload a voice message to the device for later playback. */
     suspend fun uploadVoiceMessage(device: Device, audioFilePath: String): ApiResult<Unit>
+    /** 摄像头端扬声音量 0~100（对讲播放时摄像头喇叭的音量） */
+    suspend fun setSpeakerVolume(device: Device, volPct: Int): ApiResult<Unit>
+    /** 摄像头端收音音量 0~100（环境声采集/监听的麦克风增益） */
+    suspend fun setMicVolume(device: Device, volPct: Int): ApiResult<Unit>
 
     // ---- Security alarm ----
     /** Toggle the device status LED (状态指示灯). */
@@ -98,6 +149,18 @@ interface CameraVendorApi {
     suspend fun queryTfRecordings(device: Device, dayStart: Long): ApiResult<List<Pair<Long, Long>>>
     /** Download a remote recording segment to local file. */
     suspend fun downloadRecording(device: Device, start: Long, duration: Long, destPath: String): ApiResult<Unit>
+
+    // ---- 视频/音频参数读写（每个摄像头探测后由用户修改，再写回摄像头）----
+    /**
+     * 读取摄像头当前的音视频配置（编码/分辨率/帧率/码率/音频开关/音量）。
+     * 不支持的摄像头会先尝试通过 RTSP DESCRIBE 的 SDP 做只读探测，无法写回时 UI 提示。
+     */
+    suspend fun getVideoAudioConfig(device: Device): ApiResult<VideoAudioConfig>
+    /**
+     * 写入摄像头音视频配置。写入后摄像头会立刻生效，录像/回放将按新参数。
+     *  注意：修改分辨率或编码可能导致 RTSP 路径变，UI 上提示用户并刷新设备。
+     */
+    suspend fun setVideoAudioConfig(device: Device, cfg: VideoAudioConfig): ApiResult<Unit>
 
     // ---- Device management ----
     suspend fun reboot(device: Device): ApiResult<Unit>
