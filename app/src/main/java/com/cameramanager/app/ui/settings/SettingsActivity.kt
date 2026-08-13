@@ -3,6 +3,7 @@ package com.cameramanager.app.ui.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -39,6 +40,8 @@ import kotlinx.coroutines.withContext
  *  2. 后台调用 CameraVendorApi.queryCapabilities 获取完整能力集；
  *  3. 按能力刷新各分组与各条目可见性；
  *  4. 设备不支持的功能点击会弹 Toast "当前摄像头不支持此功能"。
+ *
+ * 防闪退策略：onCreate 全 try-catch，所有跳转用 safeStart
  */
 class SettingsActivity : AppCompatActivity() {
 
@@ -52,30 +55,37 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivitySettingsBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        runCatching {
+            binding = ActivitySettingsBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            setSupportActionBar(binding.toolbar)
+            supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            supportActionBar?.title = "摄像头设置"
 
-        val deviceId = intent.getLongExtra(EXTRA_DEVICE_ID, -1L)
+            val deviceId = intent.getLongExtra(EXTRA_DEVICE_ID, -1L)
 
-        adapter = RuleAdapter(
-            onClick = { startActivity(DetectionRuleActivity.intent(this, deviceId, it.id)) },
-            onToggle = { rule, enabled -> viewModel.saveRule(rule.copy(enabled = enabled)) },
-            onDelete = { viewModel.deleteRule(it) }
-        )
+            adapter = RuleAdapter(
+                onClick = { safeStart(DetectionRuleActivity.intent(this, deviceId, it.id)) },
+                onToggle = { rule, enabled -> viewModel.saveRule(rule.copy(enabled = enabled)) },
+                onDelete = { viewModel.deleteRule(it) }
+            )
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                device = withContext(Dispatchers.IO) { CameraApp.get().repository.getDevice(deviceId) }
-                device?.let {
-                    bindDeviceInfo(it)
-                    applyBasicVisibility(it)
-                    queryCapabilities(it)
-                    bindRowEvents(deviceId, it)
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    device = withContext(Dispatchers.IO) { CameraApp.get().repository.getDevice(deviceId) }
+                    device?.let {
+                        bindDeviceInfo(it)
+                        applyBasicVisibility(it)
+                        queryCapabilities(it)
+                        bindRowEvents(deviceId, it)
+                    }
+                    viewModel.rules(deviceId).collectLatest { adapter.submit(it) }
                 }
-                viewModel.rules(deviceId).collectLatest { adapter.submit(it) }
             }
+        }.onFailure { t ->
+            Log.e("SettingsActivity", "onCreate failed: ${t.message}", t)
+            toast("设置页初始化失败: ${t.message}")
+            finish()
         }
     }
 
@@ -259,7 +269,7 @@ class SettingsActivity : AppCompatActivity() {
             subtitle = "通过摄像头通话喊话")
         binding.includeRowVoiceCall.root.setOnClickListener {
             if (supported() && cap().voiceIntercom)
-                startActivity(com.cameramanager.app.ui.voice.VoiceIntercomActivity.intent(this, deviceId))
+                safeStart(com.cameramanager.app.ui.voice.VoiceIntercomActivity.intent(this, deviceId))
             else unsupportedToast()
         }
 
@@ -308,13 +318,13 @@ class SettingsActivity : AppCompatActivity() {
         setRowIconTitle(binding.includeRowRegion, R.drawable.ic_grid, "自定义侦测区域",
             subtitle = "只在框选区域内触发告警")
         binding.includeRowRegion.root.setOnClickListener {
-            startActivity(com.cameramanager.app.ui.detection.DetectionRegionActivity.intent(this, deviceId))
+            safeStart(com.cameramanager.app.ui.detection.DetectionRegionActivity.intent(this, deviceId))
         }
 
         setRowIconTitle(binding.includeRowAlarmLog, R.drawable.ic_alarm, "告警记录",
             subtitle = "查看历史告警与截图")
         binding.includeRowAlarmLog.root.setOnClickListener {
-            startActivity(AlarmLogActivity.intent(this, deviceId))
+            safeStart(AlarmLogActivity.intent(this, deviceId))
         }
 
         setSwitchRowIconTitle(binding.includeRowNotify, R.drawable.ic_alarm, "异常事件消息推送")
@@ -546,7 +556,7 @@ class SettingsActivity : AppCompatActivity() {
             .setNegativeButton("关闭", null).show()
 
         btnAdd.setOnClickListener {
-            startActivity(DetectionRuleActivity.intent(this, deviceId, -1L))
+            safeStart(DetectionRuleActivity.intent(this, deviceId, -1L))
         }
 
         lifecycleScope.launch {
@@ -555,6 +565,13 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun safeStart(intent: Intent) {
+        runCatching { startActivity(intent) }
+            .onFailure { t -> toast("打开页面失败: ${t.message ?: "未知错误"}") }
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 

@@ -115,12 +115,19 @@ class PreviewActivity : AppCompatActivity() {
         }
 
         setupControls()
-        viewModel.load(intent.getLongExtra(EXTRA_DEVICE_ID, -1))
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.device.collectLatest { dev ->
-                    if (dev != null) bindDevice(dev)
+        val tempDev = intent.getParcelableExtra<Device>(EXTRA_TEMP_DEVICE)
+        val deviceId = intent.getLongExtra(EXTRA_DEVICE_ID, -1L)
+        if (tempDev != null) {
+            // 免添加临时预览：直接 bind，不进 Room
+            bindDevice(tempDev)
+        } else {
+            viewModel.load(deviceId)
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.device.collectLatest { dev ->
+                        if (dev != null) bindDevice(dev)
+                    }
                 }
             }
         }
@@ -416,7 +423,18 @@ class PreviewActivity : AppCompatActivity() {
 
     companion object {
         private const val EXTRA_DEVICE_ID = "device_id"
+        private const val EXTRA_TEMP_DEVICE = "temp_device"
+
         fun intent(context: Context, deviceId: Long): Intent =
             Intent(context, PreviewActivity::class.java).putExtra(EXTRA_DEVICE_ID, deviceId)
+
+        /**
+         * 免添加直预览入口（局域网扫描发现后，还没入库，填完账号密码走这里）。
+         * Device 用 Parcelable 序列化直接传，不进 Room，PreviewActivity 照样能播。
+         */
+        fun intentTemp(context: Context, tempDevice: Device): Intent =
+            Intent(context, PreviewActivity::class.java)
+                .putExtra(EXTRA_TEMP_DEVICE, tempDevice)
+                .putExtra(EXTRA_DEVICE_ID, -1L)
     }
 }

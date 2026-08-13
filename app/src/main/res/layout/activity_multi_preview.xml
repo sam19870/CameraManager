@@ -1,18 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:background="@color/brand_primary">
-        <androidx.appcompat.widget.Toolbar android:id="@+id/toolbar"
-            android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-            app:titleTextColor="@color/white"/>
-    </com.google.android.material.appbar.AppBarLayout>
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/bg_dark" app:title="分屏预览"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_back_white"/>
 
-    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
-        android:layout_width="match_parent" android:layout_height="match_parent"
-        android:padding="6dp" app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    <!-- 分屏切换栏：1/4/6/9 画面 -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp" android:gravity="center">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpan1"
+            style="@style/ChipButton" android:text="1画面"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginEnd="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpan2"
+            style="@style/ChipButton" android:text="4画面"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginHorizontal="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpan3"
+            style="@style/ChipButton" android:text="6画面"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginHorizontal="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpan4"
+            style="@style/ChipButton" android:text="9画面"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginStart="6dp"/>
+    </LinearLayout>
+
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:padding="4dp"/>
+
+        <LinearLayout android:id="@+id/emptyState"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="center"
+            android:visibility="gone" android:padding="32dp">
+            <ImageView android:layout_width="86dp" android:layout_height="86dp"
+                android:src="@drawable/ic_view_quilt"
+                app:tint="@color/text_tertiary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="暂无已添加摄像头"
+                android:textColor="@color/text_secondary" android:textSize="15sp"
+                android:layout_marginTop="16dp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="请先添加设备或使用局域网扫描发现摄像头"
+                android:textColor="@color/text_tertiary" android:textSize="12sp"
+                android:layout_marginTop="6dp"/>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

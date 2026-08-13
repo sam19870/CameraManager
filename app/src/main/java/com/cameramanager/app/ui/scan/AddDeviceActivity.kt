@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -23,6 +24,8 @@ import kotlinx.coroutines.withContext
  * 手动添加摄像头：极简 NVR 风格。
  * 用户只填：设备名 / IP / 端口(默认80) / 用户名(admin) / 密码
  * 由 [DeviceAutoProbe] 自动探测 ONVIF/Tapo/乐橙协议、真实 RTSP 路径、PTZ 能力。
+ *
+ * 防闪退策略：onCreate 全 try-catch，所有跳转用 safeStart
  */
 class AddDeviceActivity : AppCompatActivity() {
 
@@ -32,20 +35,27 @@ class AddDeviceActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityAddDeviceBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        runCatching {
+            binding = ActivityAddDeviceBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            setSupportActionBar(binding.toolbar)
+            supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            supportActionBar?.title = "添加摄像头"
 
-        intent.getStringExtra(EXTRA_HOST)?.let { binding.editHost.setText(it) }
-        intent.getIntExtra(EXTRA_PORT, 80).takeIf { it > 0 }?.let {
-            binding.editPort.setText(it.toString())
+            intent.getStringExtra(EXTRA_HOST)?.let { binding.editHost.setText(it) }
+            intent.getIntExtra(EXTRA_PORT, 80).takeIf { it > 0 }?.let {
+                binding.editPort.setText(it.toString())
+            }
+
+            binding.probeLog.movementMethod = ScrollingMovementMethod()
+
+            binding.btnCancel.setOnClickListener { finish() }
+            binding.btnSave.setOnClickListener { startProbe() }
+        }.onFailure { t ->
+            Log.e(TAG, "onCreate failed: ${t.message}", t)
+            toast("添加页初始化失败: ${t.message}")
+            finish()
         }
-
-        binding.probeLog.movementMethod = ScrollingMovementMethod()
-
-        binding.btnCancel.setOnClickListener { finish() }
-        binding.btnSave.setOnClickListener { startProbe() }
     }
 
     private fun startProbe() {
@@ -57,7 +67,7 @@ class AddDeviceActivity : AppCompatActivity() {
         val pass = binding.editPass.text.toString().trim()
 
         if (host.isEmpty()) {
-            Toast.makeText(this, "请输入 IP 地址", Toast.LENGTH_SHORT).show()
+            toast("请输入 IP 地址")
             return
         }
 
@@ -72,36 +82,50 @@ class AddDeviceActivity : AppCompatActivity() {
         )
 
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                DeviceAutoProbe.probe(base) { step ->
-                    runOnUiThread {
-                        binding.probeLog.append(step + "\n")
-                        val layout = binding.probeLog.layout
-                        if (layout != null) {
-                            val y = layout.getLineBottom(binding.probeLog.lineCount - 1) -
-                                binding.probeLog.height
-                            binding.probeLog.scrollTo(0, y.coerceAtLeast(0))
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    DeviceAutoProbe.probe(base) { step ->
+                        runOnUiThread {
+                            binding.probeLog.append(step + "\n")
+                            val layout = binding.probeLog.layout
+                            if (layout != null) {
+                                val y = layout.getLineBottom(binding.probeLog.lineCount - 1) -
+                                    binding.probeLog.height
+                                binding.probeLog.scrollTo(0, y.coerceAtLeast(0))
+                            }
                         }
                     }
                 }
             }
-            viewModel.add(result.device)
-            Toast.makeText(
-                this@AddDeviceActivity,
-                "已添加「${result.device.name}」·${if (result.rtspVerified) "RTSP已验证" else "已保存"}",
-                Toast.LENGTH_LONG
-            ).show()
-            startActivity(
-                Intent(this@AddDeviceActivity, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
-            finish()
+            result.onSuccess { r ->
+                viewModel.add(r.device)
+                toast("已添加「${r.device.name}」·${if (r.rtspVerified) "RTSP已验证" else "已保存"}")
+                safeStart(
+                    Intent(this@AddDeviceActivity, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                )
+                finish()
+            }.onFailure { t ->
+                Log.e(TAG, "probe failed: ${t.message}", t)
+                toast("探测失败: ${t.message ?: "未知错误"}")
+                probing = false
+                binding.btnSave.isEnabled = true
+                binding.btnSave.text = "保存并探测"
+            }
         }
     }
+
+    private fun safeStart(intent: Intent) {
+        runCatching { startActivity(intent) }
+            .onFailure { t -> toast("跳转失败: ${t.message ?: "未知错误"}") }
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 
     companion object {
+        private const val TAG = "AddDevice"
         private const val EXTRA_HOST = "host"
         private const val EXTRA_PORT = "port"
         fun intent(context: Context, host: String, port: Int, onvif: Boolean): Intent =

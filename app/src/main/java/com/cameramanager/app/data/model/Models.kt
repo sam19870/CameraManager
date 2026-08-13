@@ -1,8 +1,10 @@
 package com.cameramanager.app.data.model
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.parcelize.Parcelize
 
 /**
  * A managed camera device. Supports both LAN and remote devices.
@@ -18,6 +20,7 @@ import androidx.room.PrimaryKey
  * NetworkRouter 会按「当前 WiFi SSID == lanSsid」判断走内网，
  * 否则按 tunnelId → publicHost → 原始 host 的顺序选路。
  */
+@Parcelize
 @Entity(
     tableName = "devices",
     indices = [Index(value = ["host", "port"], unique = true)]
@@ -64,7 +67,7 @@ data class Device(
     val publicPort: Int = 0,
     /** 设备自身公网 ONVIF 端口。 */
     val publicOnvifPort: Int = 0
-) {
+) : Parcelable {
     /** Build the full RTSP URL using the given host/port/path. */
     fun rtspUrl(useHost: String = host, usePort: Int = port): String {
         val auth = if (!username.isNullOrEmpty()) {
