@@ -220,7 +220,8 @@ class PlaybackActivity : AppCompatActivity() {
         }
         val d = device ?: return Uri.parse(localFile)
         // 回放时使用简化直连；NetworkRouter.resolve 是 suspend 所以此处兜底直接用设备地址
-        val host = d.host; val port = d.port
+        // 【重要】RTSP 端口用 rtspPort（554），不是管理端口 port（80）
+        val host = d.host; val port = d.rtspPort
         val url = d.rtspUrlForProfile(playProfile, useHost = host, usePort = port)
         return Uri.parse(url)
     }
@@ -247,7 +248,7 @@ class PlaybackActivity : AppCompatActivity() {
             val route = runCatching { NetworkRouter.resolve(this@PlaybackActivity, d) }
                 .getOrNull()
             val host = route?.host ?: d.host
-            val port = route?.rtspPort ?: d.port
+            val port = route?.rtspPort ?: d.rtspPort
             val rtspUrl = d.rtspUrlForProfile(0, useHost = host, usePort = port)
             val timeTag = android.text.format.DateFormat.format("yyyyMMdd_HHmmss", rec.startTime)
             val fname = "cam_${d.id}_${timeTag}_${rec.durationMs}s_original.mp4"

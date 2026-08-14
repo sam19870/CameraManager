@@ -297,7 +297,8 @@ object TapoApi : CameraVendorApi {
     private fun probeViaSdp(device: Device): ApiResult<VideoAudioConfig> {
         val sdp = runCatching {
             val s = java.net.Socket()
-            s.connect(java.net.InetSocketAddress(device.host, device.port), 1800)
+            // 【重要】RTSP DESCRIBE 连的是视频流端口 rtspPort，不是管理端口 port
+            s.connect(java.net.InetSocketAddress(device.host, device.rtspPort), 1800)
             s.soTimeout = 2000
             val auth = if (!device.username.isNullOrEmpty()) {
                 val raw = "${device.username}:${device.password.orEmpty()}"
@@ -306,7 +307,7 @@ object TapoApi : CameraVendorApi {
             } else ""
             val path = device.mainRtspPath ?: device.rtspPath
             val req = buildString {
-                append("DESCRIBE rtsp://${device.host}:${device.port}/$path RTSP/1.0\r\n")
+                append("DESCRIBE rtsp://${device.host}:${device.rtspPort}/$path RTSP/1.0\r\n")
                 append("CSeq: 3\r\nAccept: application/sdp\r\n")
                 append("User-Agent: CameraManager/1.0\r\n")
                 if (auth.isNotEmpty()) append(auth)

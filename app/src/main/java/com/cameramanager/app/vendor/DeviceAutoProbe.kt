@@ -145,7 +145,9 @@ object DeviceAutoProbe {
         steps.add("→ 尝试 ONVIF 协议探测（通用兼容）")
         onStep(steps.last())
         for (p in onvifCandidates) {
-            val tmp = baseDevice.copy(onvifPort = p, port = rtspPort)
+            // 【关键修复】ONVIF SOAP 请求走 HTTP 管理端口 p（80/8080/2020 等），
+            // 之前错误写成 port=rtspPort 导致发到 554 视频端口，ONVIF 探测永远失败。
+            val tmp = baseDevice.copy(onvifPort = p, port = p)
             val caps = runCatching { onvifGetCapabilities(tmp) }.getOrNull()
             if (caps != null) {
                 onvifPort = p
@@ -325,16 +327,28 @@ object DeviceAutoProbe {
             onStep(steps.last())
         }
 
+        // ====== 端口分离（修复核心BUG）======
+        // 管理端口 port = 用户填写端口 or 探测到的 ONVIF/HTTP 端口 or 默认 80
+        // 视频端口 rtspPort = 探测到的 RTSP 端口（554/34567 等）
+        // 之前两者混用导致 Tapo 握手错误地去请求 RTSP 554 端口而不是 HTTP 80
+        val adminPort = when {
+            userPort > 0 -> userPort
+            onvifPort > 0 -> onvifPort
+            else -> 80
+        }
         val final = baseDevice.copy(
             host = host,
-            port = rtspPort,
-            onvifPort = onvifPort,
+            port = adminPort,                       // HTTP/HTTPS/ONVIF 管理端口（用户填的）
+            rtspPort = rtspPort,                    // RTSP 视频流端口（独立）
+            onvifPort = if (onvifPort > 0) onvifPort else adminPort,
             rtspPath = finalRtsp,
+            mainRtspPath = finalMain,
+            subRtspPath = finalSub,
             vendor = vendor,
             supportsPtz = supportsPtz || (onvifPort > 0),
             supportsAudio = supportsAudio
         )
-        steps.add("✓ 探测完成: vendor=$vendor rtspPort=$rtspPort 主码流=[$finalMain] 子码流=[$finalSub] onvif=$onvifPort ptz=${final.supportsPtz} audio=${final.supportsAudio}")
+        steps.add("✓ 探测完成: vendor=$vendor 管理口=$adminPort RTSP口=$rtspPort ONVIF=${final.onvifPort} 主码流=[$finalMain] 子码流=[$finalSub] ptz=${final.supportsPtz} audio=${final.supportsAudio}")
         onStep(steps.last())
         ProbeResult(final, steps, rtspVerified = true,
             mainRtspPath = finalMain, subRtspPath = finalSub)

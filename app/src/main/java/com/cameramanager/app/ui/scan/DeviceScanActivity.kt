@@ -100,27 +100,72 @@ class DeviceScanActivity : AppCompatActivity() {
                 val pwd = dlgBinding.editPassword.text?.toString()?.trim().orEmpty()
                 val name = scan.manufacturer.let { if (it == "Unknown") scan.host else it } +
                         "·" + scan.model.let { if (it == "Unknown") "" else it }
+                // 【端口分离修正】scan.port 来自 NetworkScanner：
+                //   - 如果命中了管理口（80/8080/8000/443/2020...），scan.port = 管理口，scan.onvif = true
+                //   - 只命中了 RTSP 口，scan.port = 554/34567/37777，scan.onvif = false
+                // RTSP 视频流默认 554（95% 摄像头都开），34567/37777/8554 等特殊端口则按 scan.port
+                val adminPortsSet = setOf(80, 81, 443, 2020, 8000, 8001, 8008, 8080, 8081, 8899, 9000, 37777, 3800)
+                val rtspPortsSet = setOf(554, 8554, 10554, 34567, 37777, 7447, 8557, 9554, 1554, 5554)
                 val onvifPort = if (scan.onvif) scan.port else 0
-                val rtspPort = if (scan.port in setOf(80, 8080, 8000, 443)) 554 else scan.port
+                // RTSP 视频端口：先猜 scan.port 是不是典型 RTSP 口；是就用它；否则默认 554
+                val rtspPort = when {
+                    scan.port in rtspPortsSet -> scan.port
+                    else -> 554
+                }
+                val adminPort = when {
+                    scan.onvif -> scan.port            // NetworkScanner 已经把管理口填到 scan.port
+                    scan.port in rtspPortsSet -> 80    // 只扫到 RTSP 口，管理口默认 80（用户正式添加时可改）
+                    else -> 80
+                }
+                val mfr = scan.manufacturer.lowercase()
+                // 匹配 scan.manufacturer：支持 NetworkScanner 返回的 "TPLink/Imou/Dahua/Hikvision/Ezviz/Uniview/XiongMai"
+                val rtspSub = when {
+                    mfr.contains("dahua") || mfr.contains("hikvision") || mfr.contains("ezviz") || mfr.contains("海康")
+                        -> "cam/realmonitor?channel=1&subtype=1"
+                    mfr.contains("tplink") || mfr.contains("tapo")
+                        -> "stream2"
+                    mfr.contains("imou") || mfr.contains("乐橙")
+                        -> "cam/realmonitor?channel=1&subtype=1"
+                    mfr.contains("uniview")
+                        -> "unicast/c1/s1"
+                    mfr.contains("xiongmai") || mfr.contains("xmeye")
+                        -> "ch01/02"
+                    else -> "stream1"
+                }
+                val rtspMain = when {
+                    mfr.contains("dahua") || mfr.contains("hikvision") || mfr.contains("ezviz") || mfr.contains("海康")
+                        -> "cam/realmonitor?channel=1&subtype=0"
+                    mfr.contains("tplink") || mfr.contains("tapo")
+                        -> "stream1"
+                    mfr.contains("imou") || mfr.contains("乐橙")
+                        -> "cam/realmonitor?channel=1&subtype=0"
+                    mfr.contains("uniview")
+                        -> "unicast/c1/s0"
+                    mfr.contains("xiongmai") || mfr.contains("xmeye")
+                        -> "ch01/01"
+                    else -> "stream0"
+                }
+                val vendor = when {
+                    mfr.contains("tplink") || mfr.contains("tapo") -> "tapo"
+                    mfr.contains("imou") -> "imou"
+                    mfr.contains("dahua") -> "dahua"
+                    mfr.contains("hikvision") || mfr.contains("ezviz") -> "hikvision"
+                    mfr.contains("uniview") -> "uniview"
+                    mfr.contains("xiongmai") || mfr.contains("xmeye") -> "xiongmai"
+                    else -> "generic"
+                }
                 val temp = Device(
                     id = 0L, name = name.ifEmpty { scan.host },
-                    host = scan.host, port = rtspPort,
-                    rtspPath = when (scan.manufacturer.lowercase()) {
-                        "dahua", "海康", "hikvision" -> "cam/realmonitor?channel=1&subtype=1"
-                        "tplink", "tapo" -> "stream1"
-                        "imou", "乐橙", "dahua imou" -> "cam/realmonitor?channel=1&subtype=1"
-                        "xmeye", "xiongmai" -> "ch01/01"
-                        else -> "stream0"
-                    },
+                    host = scan.host, port = adminPort,        // 管理端口（HTTP/ONVIF）
+                    rtspPort = rtspPort,                        // RTSP 视频端口
+                    rtspPath = rtspSub,                          // 预览默认子码流
+                    mainRtspPath = rtspMain,                     // 主码流（原画）
+                    subRtspPath = rtspSub,                       // 子码流（流畅）
                     username = user, password = pwd,
                     onvifPort = onvifPort,
                     supportsPtz = scan.onvif,
                     supportsAudio = true,
-                    vendor = when (scan.manufacturer.lowercase()) {
-                        "tplink", "tapo" -> "tapo"
-                        "imou", "乐橙", "dahua imou" -> "imou"
-                        else -> "generic"
-                    }
+                    vendor = vendor
                 )
                 runCatching { startActivity(PreviewActivity.intentTemp(this, temp)) }
                     .onFailure { t -> toast("打开预览失败: ${t.message}") }

@@ -93,8 +93,31 @@ object NetworkRouter {
         }
     }
 
+    /** 私网 CIDR 判断：IP 是否在 a.b.c.d/xx 网段内（简化实现，只比较/24、/16、/8 三种常见前缀） */
+    private fun ipInCidr(ip: String, cidr: String): Boolean {
+        val parts = cidr.split('/')
+        if (parts.size != 2) return false
+        val mask = parts[1].toIntOrNull() ?: return false
+        val net = parts[0].split('.').mapNotNull { it.toIntOrNull() }
+        val tip = ip.split('.').mapNotNull { it.toIntOrNull() }
+        if (net.size != 4 || tip.size != 4) return false
+        // 把 mask 位数转换成高位为 1 的 32 位整数，比较 (tipInt & maskInt) == (netInt & maskInt)
+        val maskInt = if (mask <= 0) 0 else (0xFFFFFFFF.toInt() shl (32 - mask))
+        fun ipInt(a: Int, b: Int, c: Int, d: Int) =
+            ((a and 0xFF) shl 24) or ((b and 0xFF) shl 16) or ((c and 0xFF) shl 8) or (d and 0xFF)
+        val n = ipInt(net[0], net[1], net[2], net[3]) and maskInt
+        val t = ipInt(tip[0], tip[1], tip[2], tip[3]) and maskInt
+        return n == t
+    }
+
     /**
      * 为设备选路。挂起函数：LAN 时会做一次 TCP 可达性探测（端口通即视为内网可达）。
+     * 路由优先级：
+     *  1) WiFi SSID 匹配 → 内网直连
+     *  2) 设备绑定 tunnelId → 走该通道
+     *  3) 【新增】设备 IP 命中任一启用 Tunnel 的 lanCidr → 自动走该通道（不用手动绑定）
+     *  4) 设备自带公网地址 → 公网
+     *  5) 兜底：私网 + 在 WiFi → 内网直连；否则直连原始 host
      */
     suspend fun resolve(context: Context, device: Device): RouteResult = withContext(Dispatchers.IO) {
         val currentSsid = currentSsid(context)
@@ -105,11 +128,11 @@ object NetworkRouter {
             !currentSsid.isNullOrEmpty() &&
             currentSsid.equals(lanSsid, ignoreCase = true)
         if (sameSsid) {
-            val reach = isPortOpen(device.host, device.port, PROBE_TIMEOUT_MS)
+            val reach = isPortOpen(device.host, device.rtspPort, PROBE_TIMEOUT_MS)
             return@withContext RouteResult(
                 host = device.host,
-                rtspPort = device.port,
-                onvifPort = device.onvifPort,
+                rtspPort = device.rtspPort,
+                onvifPort = if (device.onvifPort > 0) device.onvifPort else device.port,
                 type = RouteType.LAN,
                 label = "内网·${currentSsid}",
                 reachable = reach
@@ -123,7 +146,7 @@ object NetworkRouter {
                 return@withContext RouteResult(
                     host = tunnel.host,
                     rtspPort = tunnel.port,
-                    onvifPort = tunnel.onvifPort,
+                    onvifPort = if (tunnel.onvifPort > 0) tunnel.onvifPort else tunnel.port,
                     type = RouteType.TUNNEL,
                     label = "穿透·${tunnel.name}",
                     tunnel = tunnel
@@ -131,26 +154,42 @@ object NetworkRouter {
             }
         }
 
-        // 3) 设备自带公网地址 → 走公网
+        // 3) 【自动匹配】设备 IP 命中任一启用 Tunnel 的 lanCidr → 自动走该通道
+        val allTunnels = runCatching { CameraApp.get().repository.getTunnels() }.getOrDefault(emptyList())
+        val matchedByCidr = allTunnels.firstOrNull { t ->
+            t.enabled && !t.lanCidr.isNullOrBlank() && runCatching { ipInCidr(device.host, t.lanCidr) }.getOrDefault(false)
+        }
+        if (matchedByCidr != null) {
+            return@withContext RouteResult(
+                host = matchedByCidr.host,
+                rtspPort = matchedByCidr.port,
+                onvifPort = if (matchedByCidr.onvifPort > 0) matchedByCidr.onvifPort else matchedByCidr.port,
+                type = RouteType.TUNNEL,
+                label = "穿透CIDR·${matchedByCidr.name}·${matchedByCidr.lanCidr}",
+                tunnel = matchedByCidr
+            )
+        }
+
+        // 4) 设备自带公网地址 → 走公网
         if (!device.publicHost.isNullOrEmpty() && device.publicPort > 0) {
             return@withContext RouteResult(
                 host = device.publicHost,
                 rtspPort = device.publicPort,
-                onvifPort = device.publicOnvifPort,
+                onvifPort = if (device.publicOnvifPort > 0) device.publicOnvifPort else device.publicPort,
                 type = RouteType.PUBLIC,
                 label = "公网·${device.publicHost}"
             )
         }
 
-        // 4) 兜底：当前在 WiFi 且设备 host 是私网地址 → 试内网；否则用原始 host 直连
+        // 5) 兜底：当前在 WiFi 且设备 host 是私网地址 → 试内网；否则用原始 host 直连
         val isPrivateLan = device.host.startsWith("192.168.") ||
             device.host.startsWith("10.") ||
             device.host.startsWith("172.")
         val fallbackLan = isOnWifi(context) && isPrivateLan
         RouteResult(
             host = device.host,
-            rtspPort = device.port,
-            onvifPort = device.onvifPort,
+            rtspPort = device.rtspPort,
+            onvifPort = if (device.onvifPort > 0) device.onvifPort else device.port,
             type = if (fallbackLan) RouteType.LAN else RouteType.PUBLIC,
             label = if (fallbackLan) "内网·直连" else "直连·${device.host}",
             reachable = true

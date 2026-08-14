@@ -118,8 +118,11 @@ class AddDeviceActivity : AppCompatActivity() {
         binding.btnSave.text = "探测中…"
         binding.cardProbe.visibility = View.VISIBLE
         binding.probeLog.text = ""
+        // 【端口分离】用户填的 port = 管理端口（HTTP/ONVIF，默认 80）
+        // RTSP 视频流端口由 DeviceAutoProbe 探测后写入，此处先填默认 554 兜底
         val base = Device(
             name = name, host = host, port = port,
+            rtspPort = 554,
             username = user, password = pass.ifEmpty { null }
         )
 

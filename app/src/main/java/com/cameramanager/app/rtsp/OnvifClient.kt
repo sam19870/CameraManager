@@ -48,21 +48,36 @@ object OnvifClient {
     /**
      * Probe the LAN for ONVIF devices. Returns a list of discovered devices with
      * their service URLs.
+     *
+     * 实现要点（参考 ONVIF Core Specification v22.12 + 开源 onvif-java 实现）：
+     *  - 必须使用 MulticastSocket 并 joinGroup(239.255.255.250)，否则很多支持 IGMP
+     *    snooping 的交换机会把组播包丢弃，摄像头收不到探测、App 也收不到响应；
+     *  - 连续发送 3 次 Probe（间隔 300ms），防止丢包；
+     *  - 超时 2500ms；
+     *  - 需要 WiFi MulticastLock（由调用方 DeviceScanActivity 持有）。
      */
     suspend fun discover(): List<ScannedDevice> = withContext(Dispatchers.IO) {
         val results = mutableMapOf<String, ScannedDevice>()
-        var socket: DatagramSocket? = null
+        var socket: java.net.MulticastSocket? = null
+        val groupAddr = InetAddress.getByName(MULTICAST_ADDR)
         try {
-            socket = DatagramSocket().apply {
+            socket = java.net.MulticastSocket().apply {
                 soTimeout = DISCOVERY_TIMEOUT_MS
                 broadcast = true
+                reuseAddress = true
+                // 关键：加入组播组才能收到摄像头返回的响应
+                runCatching { joinGroup(groupAddr) }
+                    .onFailure { Log.w(TAG, "joinGroup failed: ${it.message}") }
             }
             val msg = PROBE_MESSAGE.toByteArray()
-            val packet = DatagramPacket(
-                msg, msg.size,
-                InetAddress.getByName(MULTICAST_ADDR), MULTICAST_PORT
-            )
-            socket.send(packet)
+            // 连发 3 次防丢包
+            repeat(3) {
+                runCatching {
+                    val packet = DatagramPacket(msg, msg.size, groupAddr, MULTICAST_PORT)
+                    socket.send(packet)
+                }
+                try { kotlinx.coroutines.delay(300L) } catch (_: Exception) {}
+            }
 
             val buf = ByteArray(8192)
             val deadline = System.currentTimeMillis() + DISCOVERY_TIMEOUT_MS
@@ -78,12 +93,15 @@ object OnvifClient {
                         }
                 } catch (_: SocketTimeoutException) {
                     break
+                } catch (e: Exception) {
+                    Log.v(TAG, "receive loop: ${e.message}")
                 }
             }
         } catch (e: Exception) {
             Log.w(TAG, "discover failed: ${e.message}")
         } finally {
-            socket?.close()
+            runCatching { socket?.leaveGroup(groupAddr) }
+            runCatching { socket?.close() }
         }
         results.values.toList()
     }

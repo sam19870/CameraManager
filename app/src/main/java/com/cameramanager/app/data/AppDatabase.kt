@@ -14,7 +14,7 @@ import com.cameramanager.app.data.model.Tunnel
 
 @Database(
     entities = [Device::class, DetectionRule::class, AlarmEvent::class, Recording::class, Tunnel::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,6 +38,13 @@ abstract class AppDatabase : RoomDatabase() {
          *  - tunnels 表按 SakuraFrp 官方文档（公网入口模型）重写：
          *    新增 token / authUser / authPass / lanCidr / lanGateway 字段。
          *    host/port/onvifPort 三个字段保留为必填核心列（原来有）。
+         *
+         * v3 -> v4：【核心BUG修复】
+         *  - devices 表新增 rtspPort 列，用于区分「管理端口 port」和「视频 RTSP 端口 rtspPort」：
+         *     port = HTTP/HTTPS/ONVIF/Tapo 握手的管理端口（默认80）
+         *     rtspPort = RTSP 视频流端口（默认554）
+         *    之前两者混用导致 Tapo 握手错误地请求 RTSP 554 端口（不是 HTTP 80），
+         *    用户反馈"操作提示连接443端口、无视频画面"的根因。
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -76,6 +83,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                runCatching {
+                    // 新增 rtspPort 列：默认值 554（绝大多数摄像头的 RTSP 端口）。
+                    // 旧数据：如果之前 port=554/34567/37777/8554 等典型 RTSP 端口，
+                    // 保持原值，同时把 port 回退到 80（管理端口）。
+                    db.execSQL("ALTER TABLE devices ADD COLUMN rtspPort INTEGER NOT NULL DEFAULT 554")
+                    // 典型 RTSP 端口集合：如果旧 port 在这个集合内，说明之前把 RTSP 口填到管理口了，
+                    // 迁移时把 port 置成 80（管理口），rtspPort 保留原 port 值。
+                    val rtspPorts = listOf(554, 8554, 10554, 34567, 37777, 7447, 8557, 9554, 1554, 5554)
+                    rtspPorts.forEach { p ->
+                        runCatching {
+                            db.execSQL(
+                                "UPDATE devices SET rtspPort=$p, port=80 WHERE port=$p AND (rtspPort IS NULL OR rtspPort=554)"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -83,7 +111,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "camera_manager.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }

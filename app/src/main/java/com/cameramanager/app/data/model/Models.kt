@@ -30,7 +30,20 @@ data class Device(
     val name: String,
     /** LAN IP or remote host. */
     val host: String,
-    val port: Int = 554,
+    /**
+     * 管理端口（HTTP/HTTPS/ONVIF 控制通道端口）：
+     *   - 用户添加时填的端口（默认 80）
+     *   - Tapo 握手、ONVIF SOAP、厂商 API 调用一律使用此端口
+     *   - 不再与 RTSP 端口混用（之前混用导致连错端口是核心 bug）
+     */
+    val port: Int = 80,
+    /**
+     * RTSP 视频流端口（与管理端口分离）：
+     *   - 默认 554（绝大多数摄像头）
+     *   - 特殊厂商 34567/37777/8554 等由 DeviceAutoProbe 探测后写入
+     *   - RTSP URL 构造、RtspPlayer、回放下载一律使用此端口
+     */
+    val rtspPort: Int = 554,
     /** RTSP path without leading slash, e.g. "stream0" or "live/ch0". */
     val rtspPath: String = "stream0",
     val username: String? = null,
@@ -83,7 +96,7 @@ data class Device(
     val subRtspPath: String? = null
 ) : Parcelable {
     /** Build the full RTSP URL using the given host/port/path. */
-    fun rtspUrl(useHost: String = host, usePort: Int = port): String {
+    fun rtspUrl(useHost: String = host, usePort: Int = rtspPort): String {
         return rtspUrlForProfile(streamProfile, useHost, usePort)
     }
 
@@ -91,8 +104,9 @@ data class Device(
      * 根据 profile 选对应的码流路径生成 URL。
      *  profile=0(高清) 用主码流；=1(标清)/=2(流畅) 用子码流。
      *  回放和下载一律传 profile=0 拿原画。
+     *  【重要】端口参数默认用 rtspPort（554 等），不再是管理端口 port（80/443）。
      */
-    fun rtspUrlForProfile(profile: Int, useHost: String = host, usePort: Int = port): String {
+    fun rtspUrlForProfile(profile: Int, useHost: String = host, usePort: Int = rtspPort): String {
         val path = when (profile) {
             0 -> mainRtspPath?.ifBlank { null } ?: rtspPath
             else -> subRtspPath?.ifBlank { null } ?: rtspPath
