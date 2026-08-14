@@ -328,7 +328,7 @@ class PreviewActivity : AppCompatActivity() {
 
         // Tapo 第二行：音量 | 语音通话 | 对讲 | 云台 | 告警 | 回放
         tap(binding.btnMute) { toggleMute() }
-        tap(binding.btnVoiceCall) { openVoiceCall() }
+        tap(binding.btnVoiceCall) { toggleAudioPanel() }
         tap(binding.btnAudio) { toggleAudioPanel() }
         tap(binding.btnPtz) { togglePtzPanel() }
         tap(binding.btnAlarm) { toggleAlarm() }
@@ -428,17 +428,6 @@ class PreviewActivity : AppCompatActivity() {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
             binding.topBar.visibility = View.VISIBLE
             toast("已退出全屏")
-        }
-    }
-
-    private fun openVoiceCall() {
-        runCatching {
-            val d = device ?: return
-            startActivity(com.cameramanager.app.ui.voice.VoiceIntercomActivity.intent(this, d.id))
-            com.cameramanager.app.util.LogCollector.log("Module", "[语音通话] 打开成功")
-        }.onFailure { t ->
-            com.cameramanager.app.util.LogCollector.logError("Module", "[语音通话] 打开失败", t)
-            toast("语音通话失败: ${t.message}")
         }
     }
 

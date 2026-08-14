@@ -267,35 +267,35 @@
                     android:background="@drawable/bg_ptz_disc"/>
 
                 <ImageView android:id="@+id/ptzUp"
-                    android:layout_width="56dp" android:layout_height="56dp"
+                    android:layout_width="64dp" android:layout_height="64dp"
                     android:layout_gravity="top|center_horizontal"
-                    android:layout_marginTop="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="14dp" android:src="@drawable/ic_ptz_up"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_ptz_arrow"
+                    android:padding="16dp" android:src="@drawable/ic_ptz_up"
                     android:contentDescription="上"/>
 
                 <ImageView android:id="@+id/ptzDown"
-                    android:layout_width="56dp" android:layout_height="56dp"
+                    android:layout_width="64dp" android:layout_height="64dp"
                     android:layout_gravity="bottom|center_horizontal"
-                    android:layout_marginBottom="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="14dp" android:src="@drawable/ic_ptz_down"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_ptz_arrow"
+                    android:padding="16dp" android:src="@drawable/ic_ptz_down"
                     android:contentDescription="下"/>
 
                 <ImageView android:id="@+id/ptzLeft"
-                    android:layout_width="56dp" android:layout_height="56dp"
+                    android:layout_width="64dp" android:layout_height="64dp"
                     android:layout_gravity="start|center_vertical"
-                    android:layout_marginStart="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="14dp" android:src="@drawable/ic_ptz_left"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_ptz_arrow"
+                    android:padding="16dp" android:src="@drawable/ic_ptz_left"
                     android:contentDescription="左"/>
 
                 <ImageView android:id="@+id/ptzRight"
-                    android:layout_width="56dp" android:layout_height="56dp"
+                    android:layout_width="64dp" android:layout_height="64dp"
                     android:layout_gravity="end|center_vertical"
-                    android:layout_marginEnd="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="14dp" android:src="@drawable/ic_ptz_right"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_ptz_arrow"
+                    android:padding="16dp" android:src="@drawable/ic_ptz_right"
                     android:contentDescription="右"/>
 
                 <LinearLayout
@@ -303,15 +303,15 @@
                     android:layout_gravity="center" android:orientation="horizontal"
                     android:gravity="center">
                     <ImageView android:id="@+id/ptzZoomOut"
-                        android:layout_width="40dp" android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp" android:src="@drawable/ic_zoom_out"
+                        android:layout_width="48dp" android:layout_height="48dp"
+                        android:background="@drawable/bg_ptz_arrow"
+                        android:padding="12dp" android:src="@drawable/ic_zoom_out"
                         android:contentDescription="缩小"/>
                     <View android:layout_width="12dp" android:layout_height="1dp"/>
                     <ImageView android:id="@+id/ptzZoomIn"
-                        android:layout_width="40dp" android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp" android:src="@drawable/ic_zoom_in"
+                        android:layout_width="48dp" android:layout_height="48dp"
+                        android:background="@drawable/bg_ptz_arrow"
+                        android:padding="12dp" android:src="@drawable/ic_zoom_in"
                         android:contentDescription="放大"/>
                 </LinearLayout>
             </FrameLayout>

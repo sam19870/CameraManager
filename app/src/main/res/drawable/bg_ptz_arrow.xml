@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 云台方向箭头按压背景：默认半透明白，按下变品牌蓝渐变(模拟按下的阴影/立体感) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <gradient
+                android:startColor="#1E64D6"
+                android:centerColor="#2B7CFF"
+                android:endColor="#0D47A1"
+                android:type="radial"
+                android:gradientRadius="60%p"/>
+            <stroke android:width="1.5dp" android:color="#FFFFFFFF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#33FFFFFF"/>
+            <stroke android:width="1dp" android:color="#66FFFFFF"/>
+        </shape>
+    </item>
+</selector>
