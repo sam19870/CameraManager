@@ -8,6 +8,7 @@ import android.media.MediaRecorder
 import android.util.Log
 import com.cameramanager.app.data.model.Device
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -38,7 +39,10 @@ class VoiceIntercom(
 
     enum class Transport { TCP, UDP }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // 吞掉所有协程异常：避免冒泡到全局 CrashGuard 而用 Application Context 反复弹最上层 Toast
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, _ -> }
+    )
     private var uplinkJob: Job? = null
     private var downlinkJob: Job? = null
     private var socket: Socket? = null

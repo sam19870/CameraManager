@@ -74,8 +74,10 @@ object CrashGuard {
                 if (shouldToast) {
                     main.post {
                         runCatching {
-                            Toast.makeText(app, "异常已拦截: ${shortMsg(e)}",
-                                Toast.LENGTH_LONG).show()
+                            // 仅当 App 在前台时才弹，避免退出后还在最上层弹窗
+                            val current = resumedActivity ?: return@runCatching
+                            Toast.makeText(current, "异常已拦截: ${shortMsg(e)}",
+                                Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
