@@ -85,6 +85,7 @@
         <activity android:name=".ui.detection.DetectionRegionActivity" />
         <activity android:name=".ui.tunnel.TunnelManageActivity" />
         <activity android:name=".ui.settings.AppSettingsActivity" />
+        <activity android:name=".ui.settings.LogCollectActivity" />
         <activity android:name=".ui.settings.DeviceControlActivity" />
         <activity android:name=".ui.settings.NightVisionActivity" />
         <activity android:name=".ui.settings.VideoAudioConfigActivity" />

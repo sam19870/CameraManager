@@ -12,7 +12,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
-import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
@@ -82,22 +81,24 @@ object NetworkScanner {
                 async(Dispatchers.IO) {
                     semaphore.acquire()
                     try {
-                        val device = probeHost(host)
-                        if (device != null) {
-                            // dedupe by host（防止 ONVIF 已经扫到过同一台）
-                            synchronized(found) {
-                                if (!found.any { it.host == host }) {
-                                    found.add(device)
+                        runCatching {
+                            val device = probeHost(host)
+                            if (device != null) {
+                                synchronized(found) {
+                                    if (!found.any { it.host == host }) {
+                                        found.add(device)
+                                    }
                                 }
                             }
+                        }.onFailure { e ->
+                            Log.v(TAG, "probeHost $host failed: ${e.message}")
                         }
                     } finally {
                         semaphore.release()
                     }
                     synchronized(this) {
                         done++
-                        // 进度 25 → 100 线性映射
-                        onProgress(25 + (done * 75 / hosts.size.coerceAtLeast(1)))
+                        runCatching { onProgress(25 + (done * 75 / hosts.size.coerceAtLeast(1))) }
                     }
                 }
             }.awaitAll()
@@ -186,10 +187,15 @@ object NetworkScanner {
         c.getHeaderField("Server").orEmpty().also { runCatching { c.disconnect() } }
     } catch (_: Exception) { "" }
 
-    /** Ping an arbitrary host:port quickly (used when manually adding a device). */
+    /**
+     * 快速检测 IP:Port 是否可达。
+     * 只用 TCP connect（socket连接），不用 InetAddress.isReachable()。
+     * 原因：Android 上 isReachable() 需要 ICMP（root 权限），非 root 手机必定返回 false，
+     * 导致即使 IP 不通也会被 || isPortOpen 的延迟掩盖，或直接误判。
+     */
     fun testReachable(host: String, port: Int, timeoutMs: Int = 1000): Boolean =
         try {
-            InetAddress.getByName(host).isReachable(timeoutMs) || isPortOpen(host, port, timeoutMs)
+            isPortOpen(host, port, timeoutMs)
         } catch (_: Exception) {
             false
         }

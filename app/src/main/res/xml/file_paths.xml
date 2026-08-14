@@ -2,6 +2,8 @@
 <paths>
     <files-path name="screenshots" path="screenshots/" />
     <files-path name="recordings" path="recordings/" />
+    <files-path name="logs" path="logs/" />
+    <files-path name="crash_log" path="last_crash.log" />
     <cache-path name="cache" path="." />
     <external-files-path name="ext_screenshots" path="screenshots/" />
     <external-files-path name="ext_recordings" path="recordings/" />

@@ -53,6 +53,9 @@ class AppSettingsActivity : AppCompatActivity() {
             binding.cardLanScan.setOnClickListener {
                 safeStart(Intent(this, DeviceScanActivity::class.java))
             }
+            binding.cardLog.setOnClickListener {
+                safeStart(LogCollectActivity.intent(this))
+            }
 
             // ========== 开关监听器：用户改值立刻 commit，下次进来就能回显到用户关/开的状态 ==========
             binding.switchAlarm.setOnCheckedChangeListener { _, on ->

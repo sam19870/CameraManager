@@ -347,6 +347,7 @@ object DeviceAutoProbe {
         )
         steps.add("✓ 探测完成: vendor=$vendor 管理口=$adminPort RTSP口=$rtspPort ONVIF=${final.onvifPort} 主码流=[$finalMain] 子码流=[$finalSub] ptz=${final.supportsPtz} audio=${final.supportsAudio}")
         onStep(steps.last())
+        com.cameramanager.app.util.LogCollector.log("Probe", "host=$host 结果: vendor=$vendor 管理口=$adminPort RTSP口=$rtspPort ONVIF=${final.onvifPort} 主(+)[$finalMain] 子(-)[$finalSub] ptz=${final.supportsPtz} audio=${final.supportsAudio}")
         ProbeResult(final, steps, rtspVerified = true,
             mainRtspPath = finalMain, subRtspPath = finalSub)
     }

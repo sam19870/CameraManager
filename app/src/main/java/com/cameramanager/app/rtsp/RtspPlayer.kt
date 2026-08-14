@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.cameramanager.app.util.LogCollector
 import kotlinx.coroutines.*
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
@@ -149,6 +150,7 @@ class RtspPlayer(private val context: Context) {
         autoRetries.set(0)
         timeoutCount = 0
         stopped.set(false)
+        LogCollector.log("RtspPlayer", "play() profile=$profile url=$url")
         // 取消上一次的播放任务（避免并发重入）
         currentPlayJob?.cancel()
         currentPlayJob = playerScope.launch { internalPlayWithRetry() }
@@ -171,10 +173,12 @@ class RtspPlayer(private val context: Context) {
             val ok = tryPlayOnce()
             if (ok) {
                 // 进入 Playing，由 stall watchdog 管控后续
+                LogCollector.log("RtspPlayer", "播放成功进入 PLAYING")
                 return@withContext
             }
             if (released.get() || stopped.get()) break
             timeoutCount++
+            LogCollector.log("RtspPlayer", "第 ${attempt + 1} 次尝试失败，timeoutCount=$timeoutCount, url=$currentUrl")
             if (attempt < maxAutoRetries) {
                 autoRetries.incrementAndGet()
                 Log.i(TAG, "播放失败，自动重试 ${autoRetries.get()}/$maxAutoRetries")
@@ -182,6 +186,7 @@ class RtspPlayer(private val context: Context) {
             }
             // 超限 -> 进入 stalled，UI 显示手动重连
             postMain { listener?.onStalled(timeoutCount, "连接超时或设备不响应") }
+            LogCollector.log("RtspPlayer", "重试超限($maxAutoRetries)，进入手动重连")
             break
         }
     }
@@ -377,6 +382,7 @@ class RtspPlayer(private val context: Context) {
             MediaPlayer.Event.EncounteredError -> {
                 isPlayingState = false
                 val msg = "播放错误（设备拒绝或地址不可达）"
+                LogCollector.log("RtspPlayer", "VLC EncounteredError: $currentUrl")
                 postMain { listener?.onError(msg)
                     listener?.onStateChanged(State.ERROR) }
             }

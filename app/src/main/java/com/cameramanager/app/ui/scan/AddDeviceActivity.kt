@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.databinding.ActivityAddDeviceBinding
+import com.cameramanager.app.net.NetworkScanner
 import com.cameramanager.app.ui.DeviceViewModelFactory
 import com.cameramanager.app.ui.MainActivity
 import com.cameramanager.app.ui.ScanViewModel
@@ -113,11 +114,33 @@ class AddDeviceActivity : AppCompatActivity() {
         }
         if (!ok) return
 
-        probing = true
+        // ========== 快速 IP 可达性检测（2秒超时，不通直接提示，不浪费探测时间） ==========
+        val hostLayout2 = binding.editHost.parent.parent as? com.google.android.material.textfield.TextInputLayout
         binding.btnSave.isEnabled = false
+        binding.btnSave.text = "检测中…"
+        lifecycleScope.launch {
+            val reachable = withContext(Dispatchers.IO) {
+                NetworkScanner.testReachable(host, port, 2000)
+            }
+            if (!reachable) {
+                binding.btnSave.isEnabled = true
+                binding.btnSave.text = "保存并探测"
+                hostLayout2?.error = "IP 不可达！请检查摄像头是否开机、IP和端口是否正确"
+                toast("无法连接 ${host}:${port}，请确认：\n1. 摄像头已开机\n2. IP 地址正确\n3. 端口 ${port} 已开放")
+                return@launch
+            }
+            // IP 可达，开始完整探测
+            hostLayout2?.error = null
+            doProbe(name, host, port, user, pass)
+        }
+    }
+
+    private fun doProbe(name: String, host: String, port: Int, user: String, pass: String) {
+        probing = true
         binding.btnSave.text = "探测中…"
         binding.cardProbe.visibility = View.VISIBLE
         binding.probeLog.text = ""
+        binding.probeLog.append("✓ IP 可达 (${host}:${port})\n")
         // 【端口分离】用户填的 port = 管理端口（HTTP/ONVIF，默认 80）
         // RTSP 视频流端口由 DeviceAutoProbe 探测后写入，此处先填默认 554 兜底
         val base = Device(

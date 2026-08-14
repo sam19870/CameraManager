@@ -105,8 +105,8 @@
             android:orientation="horizontal"
             android:gravity="center"
             android:background="#CC000000"
-            android:paddingHorizontal="6dp"
-            android:paddingTop="8dp" android:paddingBottom="2dp">
+            android:paddingHorizontal="4dp"
+            android:paddingTop="4dp" android:paddingBottom="0dp">
 
             <LinearLayout android:id="@+id/btnSnapshot"
                 style="@style/ToolBtn" android:orientation="vertical">
@@ -162,8 +162,8 @@
             android:orientation="horizontal"
             android:gravity="center"
             android:background="#CC000000"
-            android:paddingHorizontal="6dp"
-            android:paddingTop="4dp" android:paddingBottom="10dp">
+            android:paddingHorizontal="4dp"
+            android:paddingTop="0dp" android:paddingBottom="6dp">
 
             <LinearLayout android:id="@+id/btnMute"
                 style="@style/ToolBtn" android:orientation="vertical">

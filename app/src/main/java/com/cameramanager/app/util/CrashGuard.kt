@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.cameramanager.app.util.LogCollector
 import java.io.File
 import java.util.Date
 
@@ -63,6 +64,7 @@ object CrashGuard {
                     "${Date()}\nthread=${t.name}\n${android.util.Log.getStackTraceString(e)}"
                 )
             }
+            runCatching { LogCollector.logError("Crash", "崩溃(${t.name})", e) }
             if (t == Looper.getMainLooper().thread) {
                 val key = (e.message ?: e.javaClass.name).let { if (it.length > 30) it.substring(0, 30) else it }
                 val now = System.currentTimeMillis()
