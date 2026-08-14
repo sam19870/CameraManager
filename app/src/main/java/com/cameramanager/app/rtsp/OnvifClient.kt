@@ -209,22 +209,29 @@ object OnvifClient {
         zoom: Float = 0f
     ): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
-        val body = if (pan == 0f && tilt == 0f && zoom == 0f) {
-            """<tptz:Stop>
+        if (pan == 0f && tilt == 0f && zoom == 0f) {
+            // 停止：ONVIF PTZ Stop，必须用 Stop 的 Action URI（之前误用 ContinuousMove 导致被设备拒绝）
+            val body = """<tptz:Stop>
                  <tptz:ProfileToken>$profileToken</tptz:ProfileToken>
                  <tptz:PanTilt>true</tptz:PanTilt>
                  <tptz:Zoom>true</tptz:Zoom>
                </tptz:Stop>"""
+            soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/Stop", body) != null
         } else {
-            """<tptz:ContinuousMove>
+            // 连续移动：Velocity 需带 space 属性（规范要求），否则部分设备拒绝
+            val body = """<tptz:ContinuousMove>
                  <tptz:ProfileToken>$profileToken</tptz:ProfileToken>
                  <tptz:Velocity>
-                   <tt:PanTilt x="$pan" y="$tilt" xmlns:tt="http://www.onvif.org/ver10/schema"/>
-                   <tt:Zoom x="$zoom" xmlns:tt="http://www.onvif.org/ver10/schema"/>
+                   <tt:PanTilt xmlns:tt="http://www.onvif.org/ver10/schema"
+                       x="$pan" y="$tilt"
+                       space="http://www.onvif.org/ver10/tptz/PanTiltSpaces/VelocityGenericSpace"/>
+                   <tt:Zoom xmlns:tt="http://www.onvif.org/ver10/schema"
+                       x="$zoom"
+                       space="http://www.onvif.org/ver10/tptz/ZoomSpaces/VelocityGenericSpace"/>
                  </tptz:Velocity>
                </tptz:ContinuousMove>"""
+            soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove", body) != null
         }
-        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove", body) != null
     }
 
     /**
