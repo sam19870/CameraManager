@@ -4,31 +4,41 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@color/bg_dark">
 
-    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+    <androidx.appcompat.widget.Toolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        android:background="@color/brand_primary" app:titleTextColor="@color/white"
+        android:background="@color/brand_primary"
+        android:elevation="0dp"
+        app:titleTextColor="@color/white"
         app:navigationIcon="@drawable/ic_back_white"/>
 
     <ProgressBar android:id="@+id/progress"
-        style="?android:attr/progressBarStyleHorizontal"
+        style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="match_parent" android:layout_height="5dp"
         android:max="100" android:progress="0"
         android:indeterminate="false" android:visibility="gone"/>
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:padding="10dp" android:gravity="center_vertical">
-        <com.google.android.material.button.MaterialButton
+
+        <android.widget.Button
             android:id="@+id/btnRescan"
-            style="@style/ActionButton"
-            android:text="重新扫描"
-            android:layout_width="0dp" android:layout_weight="1"
-            android:layout_marginEnd="6dp"/>
-        <com.google.android.material.button.MaterialButton
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:layout_marginEnd="6dp"
+            android:layout_marginTop="6dp" android:layout_marginBottom="6dp"
+            android:backgroundTint="@color/brand_primary"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:text="重新扫描"/>
+
+        <android.widget.Button
             android:id="@+id/btnAddManual"
-            style="@style/ActionButton"
-            android:text="手动添加"
-            android:layout_width="0dp" android:layout_weight="1"
-            android:layout_marginStart="6dp"/>
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:layout_marginStart="6dp"
+            android:layout_marginTop="6dp" android:layout_marginBottom="6dp"
+            android:backgroundTint="@color/brand_primary"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:text="手动添加"/>
     </LinearLayout>
 
     <TextView android:id="@+id/emptyHint"
