@@ -131,14 +131,16 @@ class RtspPlayer(private val context: Context) {
         }
     }
 
-    private suspend fun ensureMediaPlayer(): MediaPlayer = withContext(Dispatchers.IO) {
-        mediaPlayer ?: run {
-            val vlc = ensureLibVLC()
-            MediaPlayer(vlc).also { mp ->
-                mp.setEventListener { event -> onVlcEvent(event) }
-                mediaPlayer = mp
-            }
-        }
+    /**
+     * 必须在主线程调用（libVLC 要求 MediaPlayer 的所有操作都在主线程）。
+     * 仅 LibVLC 初始化在 IO 线程执行（真正耗时的部分），MediaPlayer 在主线程创建。
+     */
+    private suspend fun ensureMediaPlayer(): MediaPlayer {
+        mediaPlayer?.let { return it }
+        val vlc = ensureLibVLC()
+        val mp = MediaPlayer(vlc).also { it.setEventListener { event -> onVlcEvent(event) } }
+        mediaPlayer = mp
+        return mp
     }
 
     fun play(layout: VLCVideoLayout, url: String, profile: Int) {
@@ -191,20 +193,29 @@ class RtspPlayer(private val context: Context) {
         }
     }
 
-    /** 单次尝试播放（异步 + 门禁超时15s）。返回 true 表示成功进入 PLAYING 状态。 */
-    private suspend fun tryPlayOnce(): Boolean = withContext(Dispatchers.IO) {
+    /**
+     * 单次尝试播放（异步 + 门禁超时15s）。返回 true 表示成功进入 PLAYING 状态。
+     *
+     * 关键：libVLC Android 要求 MediaPlayer 的所有操作（创建/attachViews/media/play）
+     * 都必须在主线程执行，否则能解码(PLAYING)但画面不渲染。
+     * 因此整个方法在 Dispatchers.Main 执行；唯一耗时部分 LibVLC 初始化在内部切到 IO。
+     */
+    private suspend fun tryPlayOnce(): Boolean = withContext(Dispatchers.Main) {
         val vl = videoLayout
         val url = currentUrl
         if (vl == null || url == null || released.get()) return@withContext false
         return@withContext try {
+            val mp = ensureMediaPlayer()
             suspendCancellableCoroutine { cont ->
                 val localToken = watchdogToken.incrementAndGet()
-                val mp = runBlocking(Dispatchers.IO) { ensureMediaPlayer() }
+                // 主线程 attach 视图（isSpherical 必须为 false，否则走球面渲染无画面）
                 runCatching {
-                    if (!viewAttached) mp.attachViews(vl, null, false, true)
-                }.onSuccess { viewAttached = true }
-                 .onFailure { Log.w(TAG, "attachViews: ${it.message}") }
-                val media = Media(runBlocking { ensureLibVLC() }, android.net.Uri.parse(url))
+                    if (!viewAttached) {
+                        mp.attachViews(vl, null, false, false)
+                        viewAttached = true
+                    }
+                }.onFailure { Log.w(TAG, "attachViews: ${it.message}") }
+                val media = Media(libVLC!!, android.net.Uri.parse(url))
                 // 按码流档位：子码流=更小缓存，主码流=更大缓存；并显式指定 rtsp-user/rtsp-pwd
                 val (cache, networkStr) = when (currentProfile) {
                     PROFILE_HD -> 800 to "1200"
@@ -222,8 +233,7 @@ class RtspPlayer(private val context: Context) {
                 media.addOption(":clock-synchro=1")
                 media.addOption(":network-timeout=$networkStr")
                 media.addOption(":rtsp-timeout=$networkStr")
-                // URL 内 userinfo 编码：确保 rtsp://user:pass@host 同时显式给 VLC rtsp-user/pwd，
-                // 解决海康/大华/TP-LINK 部分设备 401 后 VLC 不再重试的问题
+                // URL 内 userinfo 编码：确保 rtsp://user:pass@host 同时显式给 VLC rtsp-user/pwd
                 runCatching {
                     val parsed = android.net.Uri.parse(url)
                     val u = parsed.userInfo
@@ -239,20 +249,23 @@ class RtspPlayer(private val context: Context) {
                         }
                     }
                 }.onFailure { Log.w(TAG, "decode rtsp userinfo failed: ${it.message}") }
+                // 主线程设置 media 并播放
                 mp.media = media
                 media.release()
                 mp.play()
                 isPlayingState = false
                 lastEventTime = System.currentTimeMillis()
-                postMain { listener?.onStateChanged(State.OPENING) }
+                listener?.onStateChanged(State.OPENING)
 
                 // 门禁：15秒超时
                 val timeoutJob = playerScope.launch {
                     delay(openTimeoutMs)
                     if (!released.get() && watchdogToken.get() == localToken && !isPlayingState) {
-                        postMain { listener?.onError("连接超时(${openTimeoutMs/1000}s)，未进入播放") }
-                        runCatching { mp.stop() }
-                        if (cont.isActive) cont.resume(false)
+                        postMain {
+                            listener?.onError("连接超时(${openTimeoutMs/1000}s)，未进入播放")
+                            runCatching { mp.stop() }
+                            if (cont.isActive) cont.resume(false)
+                        }
                     }
                 }
 
