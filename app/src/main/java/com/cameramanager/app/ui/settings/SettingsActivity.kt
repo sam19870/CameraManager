@@ -341,7 +341,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.rowDeviceInfo.root.setOnClickListener {
             val info = buildString {
                 append("名称：${d.name}\n")
-                append("厂商：${when (d.vendor) { "tapo" -> "TP-Link Tapo"; "imou" -> "乐橙 Imou"; else -> "通用ONVIF" }}\n")
+                append("厂商：${when (d.vendor) { "tapo" -> "TP-Link Tapo"; "tplink" -> "TP-LINK 物联"; "imou" -> "乐橙 Imou"; else -> "通用ONVIF" }}\n")
                 append("内网：${d.host}:${d.port}\n")
                 append("ONVIF 端口：${if (d.onvifPort > 0) d.onvifPort.toString() else "不支持"}\n")
                 append("RTSP 路径：${d.rtspPath}\n")

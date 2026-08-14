@@ -223,6 +223,26 @@ object OnvifClient {
         soapRequest(device, "http://www.onvif.org/ver10/device/wsdl/SystemReboot", "<tds:SystemReboot/>") != null
     }
 
+    /** Set night vision (IR cut filter) mode via ONVIF Imaging service.
+     *  mode: 0=Auto, 1=ON(IR), 2=OFF(Color).
+     *  参考: ONVIF Imaging Service Specification v20.06 */
+    suspend fun setIrCutFilter(device: Device, mode: Int): Boolean = withContext(Dispatchers.IO) {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
+        val irCutMode = when (mode) {
+            1 -> "ON"     // 红外夜视
+            2 -> "OFF"    // 全彩/白光
+            else -> "AUTO" // 自动
+        }
+        val body = """<timg:SetImagingSettings>
+            <timg:VideoSourceToken>VideoSource_1</timg:VideoSourceToken>
+            <timg:ImagingSettings>
+                <tt:IrCutFilter xmlns:tt="http://www.onvif.org/ver10/schema">$irCutMode</tt:IrCutFilter>
+            </timg:ImagingSettings>
+        </timg:SetImagingSettings>"""
+        soapRequestToPath(device, "/onvif/imaging",
+            "http://www.onvif.org/ver20/imaging/wsdl/SetImagingSettings", body) != null
+    }
+
 
     /**
      * Issue a raw SOAP request to the device ONVIF service. Returns the response body
@@ -232,8 +252,16 @@ object OnvifClient {
         device: Device,
         action: String,
         bodyXml: String
+    ): String? = soapRequestToPath(device, "/onvif/device_service", action, bodyXml)
+
+    /** SOAP request to a specific ONVIF service path (e.g., /onvif/imaging, /onvif/ptz). */
+    private fun soapRequestToPath(
+        device: Device,
+        servicePath: String,
+        action: String,
+        bodyXml: String
     ): String? {
-        val url = "http://${device.host}:${device.onvifPort}/onvif/device_service"
+        val url = "http://${device.host}:${device.onvifPort}$servicePath"
         return try {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"

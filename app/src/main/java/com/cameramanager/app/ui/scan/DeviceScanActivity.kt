@@ -154,8 +154,10 @@ class DeviceScanActivity : AppCompatActivity() {
                         -> "ch01/01"
                     else -> "stream0"
                 }
+                // TP-LINK 物联 ≠ Tapo！TP-LINK物联用标准ONVIF+RTSP，Tapo才用私有加密协议
                 val vendor = when {
-                    mfr.contains("tplink") || mfr.contains("tapo") -> "tapo"
+                    mfr.contains("tapo") -> "tapo"       // 真正的Tapo摄像头（C200/C310等）才走TapoApi
+                    mfr.contains("tplink") -> "tplink"    // TP-LINK 物联摄像头走ONVIF
                     mfr.contains("imou") -> "imou"
                     mfr.contains("dahua") -> "dahua"
                     mfr.contains("hikvision") || mfr.contains("ezviz") -> "hikvision"

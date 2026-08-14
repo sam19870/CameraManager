@@ -28,17 +28,19 @@ object ImouApi : CameraVendorApi {
                 zoom = device.supportsPtz && onvif,
                 presets = device.supportsPtz && onvif,
                 cruise = device.supportsPtz && onvif,
-                autoTrack = false,           // ONVIF 无标准 AI 追踪接口
-                nightVision = false,         // 乐橙私有接口，ONVIF 不暴露
+                autoTrack = false,
+                nightVision = onvif,            // 乐橙支持ONVIF Imaging IR Cut
                 privacyMask = false,
-                whiteLight = false,
+                whiteLight = onvif,
                 siren = onvif,
                 voiceIntercom = device.supportsAudio,
                 voiceMessage = false,
                 firmwareUpgrade = false,
                 restart = onvif,
                 detectionRegion = onvif,
-                tfStorage = onvif
+                tfStorage = onvif,
+                videoConfig = false,
+                audioConfig = false
             )
         )
     }
@@ -78,7 +80,8 @@ object ImouApi : CameraVendorApi {
 
     // ---- 画面 ----
     override suspend fun setNightVision(device: Device, mode: Int) =
-        ApiResult.Unsupported("夜视模式（请用乐橙官方App切换）")
+        if (OnvifClient.setIrCutFilter(device, mode))
+            ApiResult.Success(Unit) else ApiResult.Error("夜视模式切换失败（设备可能不支持ONVIF Imaging服务）")
 
     override suspend fun setPrivacyMask(device: Device, enabled: Boolean, regions: List<CameraVendorApi.Rect>) =
         ApiResult.Unsupported("电子区域遮蔽（请用乐橙官方App设置）")

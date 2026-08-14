@@ -116,25 +116,15 @@ class RtspPlayer(private val context: Context) {
     private suspend fun ensureLibVLC(): LibVLC = withContext(Dispatchers.IO) {
         libVLC ?: run {
             val args = ArrayList<String>().apply {
-                // 参考 OpenIPC viewer / go2rtc / VLC官方RTSP推荐参数
-                add("--verbose=2")
+                // 极简参数：对标 VLC Android 官方 + OpenIPC viewer
+                // 只保留 RTSP 播放必须的，去掉所有可能冲突的选项
+                add("--rtsp-tcp")                 // 强制TCP，避免UDP丢包
+                add("--network-caching=200")      // 低延迟
+                add("--live-caching=200")
                 add("--no-drop-late-frames")
                 add("--no-skip-frames")
-                add("--rtsp-tcp")                    // 强制TCP，避免UDP丢包
-                add("--rtsp-frame-buffer-size=200000")
-                add("--network-caching=300")
-                add("--file-caching=300")
-                add("--live-caching=300")
-                add("--avcodec-hw=auto")            // 硬解加速
-                add("--avcodec-skip-idct=0")        // 不跳过任何帧
-                add("--avcodec-skip-frame=0")
-                add("--avcodec-threads=2")
                 add("--aout=android_audiotrack")
-                add("--clock-jitter=800")
-                add("--clock-synchro=1")
-                add("--run-time=99999")
-                // 关键：只启用 avcodec 解码器，不加 "none"（之前 --codec=avcodec,none 是错误语法）
-                add("--codec=avcodec")
+                add("-vvv")
             }
             LibVLC(context.applicationContext, args).also { libVLC = it }
         }

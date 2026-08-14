@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 对标 TP-Link Tapo App 官方预览页布局 -->
+<!-- 完全对标 TP-Link Tapo 官方 App 预览页 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <!-- 全屏视频容器 -->
+    <!-- 全屏视频 -->
     <org.videolan.libvlc.util.VLCVideoLayout
         android:id="@+id/videoLayout"
         android:layout_width="match_parent" android:layout_height="match_parent"
         android:background="@android:color/black"/>
 
-    <!-- 整体竖向布局：视频透明 + 底部控件 -->
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- 顶部状态栏：Tapo风格，半透明黑底 -->
-        <LinearLayout
+        <!-- 顶部栏：Tapo风格 -->
+        <LinearLayout android:id="@+id/topBar"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical"
             android:background="#99000000"
-            android:paddingHorizontal="6dp" android:paddingTop="8dp"
+            android:paddingHorizontal="4dp" android:paddingTop="6dp"
             android:paddingBottom="4dp">
 
             <ImageView android:id="@+id/btnBack"
@@ -30,7 +29,7 @@
                 android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_back_white"
-                app:tint="@color/white"/>
+                android:contentDescription="返回"/>
 
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:paddingStart="2dp"
@@ -38,7 +37,7 @@
                 <TextView android:id="@+id/deviceName"
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textColor="@color/white" android:textStyle="bold"
-                    android:textSize="15sp"/>
+                    android:textSize="14sp"/>
                 <TextView android:id="@+id/routeText"
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textColor="#B3FFFFFF" android:textSize="10sp"
@@ -50,13 +49,12 @@
                 android:textColor="#80FFFFFF" android:textSize="10sp"
                 android:layout_marginEnd="4dp"/>
 
-            <!-- 设置齿轮图标（Tapo风格：右上角） -->
             <ImageView android:id="@+id/btnMore"
                 android:layout_width="40dp" android:layout_height="40dp"
                 android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_gear"
-                app:tint="@color/white"/>
+                android:contentDescription="设置"/>
         </LinearLayout>
 
         <!-- 中间填充 -->
@@ -99,97 +97,156 @@
                 android:visibility="gone"/>
         </LinearLayout>
 
-        <!-- ====== Tapo 风格底部工具栏 ====== -->
-        <!-- 第一行：5个核心功能按钮（截图/录像/音量/对讲/云台），均匀分布 -->
+        <!-- ====== Tapo 底部控件（完全对标官方） ====== -->
+
+        <!-- 第一行：截图 | 录像 | 画质 | 日夜 | 全屏 -->
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
             android:background="#CC000000"
-            android:paddingHorizontal="8dp"
+            android:paddingHorizontal="6dp"
             android:paddingTop="8dp" android:paddingBottom="2dp">
 
             <LinearLayout android:id="@+id/btnSnapshot"
                 style="@style/ToolBtn" android:orientation="vertical">
-                <ImageView android:layout_width="26dp" android:layout_height="26dp"
-                    android:src="@drawable/ic_snapshot" app:tint="@color/white"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_snapshot"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="截图" android:textColor="@color/white"
-                    android:textSize="11sp" android:layout_marginTop="2dp"/>
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
             </LinearLayout>
 
             <LinearLayout android:id="@+id/btnRecord"
                 style="@style/ToolBtn" android:orientation="vertical">
-                <ImageView android:id="@+id/recordIcon" android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_record" app:tint="@color/alarm_red"/>
+                <ImageView android:id="@+id/recordIcon" android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_record"/>
                 <TextView android:id="@+id/recordLabel" android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="录像" android:textColor="@color/white"
-                    android:textSize="11sp" android:layout_marginTop="2dp"/>
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnMute"
+            <LinearLayout android:id="@+id/btnProfile"
                 style="@style/ToolBtn" android:orientation="vertical">
-                <ImageView android:id="@+id/muteIcon" android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_volume" app:tint="@color/white"/>
-                <TextView android:id="@+id/muteLabel" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="有声" android:textColor="@color/white"
-                    android:textSize="11sp" android:layout_marginTop="2dp"/>
-            </LinearLayout>
-
-            <LinearLayout android:id="@+id/btnAudio"
-                style="@style/ToolBtn" android:orientation="vertical">
-                <ImageView android:layout_width="26dp" android:layout_height="26dp"
-                    android:src="@drawable/ic_mic" app:tint="@color/white"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_resolution"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="对讲" android:textColor="@color/white"
-                    android:textSize="11sp" android:layout_marginTop="2dp"/>
+                    android:text="画质" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnPtz"
+            <LinearLayout android:id="@+id/btnNightMode"
                 style="@style/ToolBtn" android:orientation="vertical">
-                <ImageView android:layout_width="26dp" android:layout_height="26dp"
-                    android:src="@drawable/ic_ptz_control" app:tint="@color/white"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_night"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="云台" android:textColor="@color/white"
-                    android:textSize="11sp" android:layout_marginTop="2dp"/>
+                    android:text="日夜" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnFullScreen"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_fullscreen"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="全屏" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 第二行：回放按钮（Tapo风格：Playback & Download） -->
+        <!-- 第二行：音量 | 语音通话 | 对讲 | 云台 | 告警 | 回放 -->
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
             android:background="#CC000000"
-            android:paddingHorizontal="12dp"
+            android:paddingHorizontal="6dp"
             android:paddingTop="4dp" android:paddingBottom="10dp">
 
-            <LinearLayout android:id="@+id/btnPlayback"
-                style="@style/ToolBtn" android:orientation="horizontal"
-                android:gravity="center"
-                android:background="@drawable/bg_tool_rounded"
-                android:paddingHorizontal="24dp" android:paddingVertical="8dp">
-                <ImageView android:layout_width="18dp" android:layout_height="18dp"
-                    android:src="@drawable/ic_playback"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="  回放和下载" android:textColor="@color/white"
-                    android:textSize="13sp" android:layout_marginStart="2dp"/>
+            <LinearLayout android:id="@+id/btnMute"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:id="@+id/muteIcon" android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_volume"/>
+                <TextView android:id="@+id/muteLabel" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="有声" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnMoreTools"
-                style="@style/ToolBtn" android:orientation="horizontal"
-                android:gravity="center"
+            <LinearLayout android:id="@+id/btnVoiceCall"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_phone"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="语音通话" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnAudio"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_mic"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="对讲" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnPtz"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_ptz_control"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="云台" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnAlarm"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:id="@+id/alarmIcon" android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_alarm"/>
+                <TextView android:id="@+id/alarmLabel" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="告警开" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnPlayback"
+                style="@style/ToolBtn" android:orientation="vertical">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                    android:src="@drawable/ic_playback"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="回放" android:textColor="@color/white"
+                    android:textSize="10sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 隐私模式按钮（独立一行） -->
+        <LinearLayout
+            android:id="@+id/btnPrivacy"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:background="#CC000000"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="4dp" android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical"
                 android:background="@drawable/bg_tool_rounded"
                 android:paddingHorizontal="20dp" android:paddingVertical="8dp"
-                android:layout_marginStart="12dp">
-                <ImageView android:layout_width="18dp" android:layout_height="18dp"
-                    android:src="@drawable/ic_toolbox"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="  更多" android:textColor="@color/white"
+                android:clickable="true" android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+                <ImageView android:id="@+id/privacyIcon" android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_video_block"/>
+                <TextView android:id="@+id/privacyLabel" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="  隐私模式" android:textColor="@color/white"
                     android:textSize="13sp" android:layout_marginStart="2dp"/>
             </LinearLayout>
         </LinearLayout>
@@ -205,52 +262,42 @@
             <FrameLayout
                 android:layout_width="220dp" android:layout_height="220dp">
 
-                <!-- 圆形底盘 -->
                 <View android:layout_width="200dp" android:layout_height="200dp"
                     android:layout_gravity="center"
                     android:background="@drawable/bg_ptz_disc"/>
 
-                <!-- 上方向键 -->
                 <ImageView android:id="@+id/ptzUp"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="top|center_horizontal"
                     android:layout_marginTop="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="14dp" android:src="@drawable/ic_ptz_up"
-                    android:contentDescription="上"
-                    app:tint="@color/white"/>
+                    android:contentDescription="上"/>
 
-                <!-- 下方向键 -->
                 <ImageView android:id="@+id/ptzDown"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="bottom|center_horizontal"
                     android:layout_marginBottom="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="14dp" android:src="@drawable/ic_ptz_down"
-                    android:contentDescription="下"
-                    app:tint="@color/white"/>
+                    android:contentDescription="下"/>
 
-                <!-- 左方向键 -->
                 <ImageView android:id="@+id/ptzLeft"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="start|center_vertical"
                     android:layout_marginStart="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="14dp" android:src="@drawable/ic_ptz_left"
-                    android:contentDescription="左"
-                    app:tint="@color/white"/>
+                    android:contentDescription="左"/>
 
-                <!-- 右方向键 -->
                 <ImageView android:id="@+id/ptzRight"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="end|center_vertical"
                     android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="14dp" android:src="@drawable/ic_ptz_right"
-                    android:contentDescription="右"
-                    app:tint="@color/white"/>
+                    android:contentDescription="右"/>
 
-                <!-- 中心缩放按钮组 -->
                 <LinearLayout
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:layout_gravity="center" android:orientation="horizontal"
@@ -259,15 +306,13 @@
                         android:layout_width="40dp" android:layout_height="40dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:padding="8dp" android:src="@drawable/ic_zoom_out"
-                        android:contentDescription="缩小"
-                        app:tint="@color/white"/>
+                        android:contentDescription="缩小"/>
                     <View android:layout_width="12dp" android:layout_height="1dp"/>
                     <ImageView android:id="@+id/ptzZoomIn"
                         android:layout_width="40dp" android:layout_height="40dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:padding="8dp" android:src="@drawable/ic_zoom_in"
-                        android:contentDescription="放大"
-                        app:tint="@color/white"/>
+                        android:contentDescription="放大"/>
                 </LinearLayout>
             </FrameLayout>
         </LinearLayout>
@@ -290,8 +335,7 @@
                     android:layout_width="30dp" android:layout_height="30dp"
                     android:padding="6dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_close"
-                    app:tint="@color/white"/>
+                    android:src="@drawable/ic_close"/>
             </LinearLayout>
 
             <RadioGroup android:id="@+id/audioModeGroup"

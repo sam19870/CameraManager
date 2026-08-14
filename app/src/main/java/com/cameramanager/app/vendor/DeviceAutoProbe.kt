@@ -177,29 +177,10 @@ object DeviceAutoProbe {
             }
         }
 
-        // ===== Tapo 加密握手 =====
-        steps.add("→ 尝试 TP-Link Tapo 加密握手（优先使用用户填写的端口，仅在失败时试 443）")
-        onStep(steps.last())
-        val tapoCandidates = mutableListOf<Int>()
-        if (userPort > 0) tapoCandidates.add(userPort)
-        if (isPortOpen(host, 443, 500) && !tapoCandidates.contains(443)) tapoCandidates.add(443)
-        var tapoPort = 0
-        for (p in tapoCandidates) {
-            val r = runCatching { TapoApi.queryCapabilities(baseDevice.copy(port = p)) }.getOrNull()
-            if (r != null && r is ApiResult.Success) {
-                tapoPort = p
-                break
-            }
-        }
-        if (tapoPort > 0) {
-            vendor = "tapo"
-            mainRtspPath = mainRtspPath ?: "stream1"
-            subRtspPath = subRtspPath ?: "stream2"
-            rtspPath = rtspPath ?: subRtspPath
-            if (onvifPort == 0 && isPortOpen(host, 2020, 500)) onvifPort = 2020
-            steps.add("  ✓ 识别到 TP-Link Tapo（端口 $tapoPort）")
-            onStep(steps.last())
-        }
+        // ===== TP-LINK 物联 / Tapo 识别（通过 HTTP Server 头区分，不尝试加密握手） =====
+        // TP-LINK 物联摄像头用标准 ONVIF + RTSP，不需要 Tapo 私有加密协议
+        // 只有 Server 头明确包含 "Tapo" 字样的才是真正的 Tapo 摄像头
+        // 大部分 TP-LINK 摄像头（物联系列）走 ONVIF 即可，不需要额外握手
 
         // ===== 基于 HTTP Server 头做厂商指纹识别 =====
         if (vendor == "generic") {
@@ -207,6 +188,22 @@ object DeviceAutoProbe {
             val server = runCatching { httpServerHeader(host, probePort) }.getOrDefault("")
             val fingerprint = server.lowercase()
             when {
+                fingerprint.contains("tapo") -> {
+                    vendor = "tapo"
+                    mainRtspPath = mainRtspPath ?: "stream1"
+                    subRtspPath = subRtspPath ?: "stream2"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到 TP-Link Tapo · Server=$server")
+                    onStep(steps.last())
+                }
+                fingerprint.contains("tp-link") || fingerprint.contains("tplink") -> {
+                    vendor = "tplink"
+                    mainRtspPath = mainRtspPath ?: "stream1"
+                    subRtspPath = subRtspPath ?: "stream2"
+                    rtspPath = rtspPath ?: subRtspPath
+                    steps.add("  ✓ 识别到 TP-LINK 物联 · Server=$server")
+                    onStep(steps.last())
+                }
                 fingerprint.contains("imou") || fingerprint.contains("lechange") -> {
                     vendor = "imou"
                     mainRtspPath = mainRtspPath ?: "cam/realmonitor?channel=1&subtype=0"

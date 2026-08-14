@@ -185,6 +185,7 @@ interface CameraVendorApi {
         /** Factory that picks the right vendor implementation by [Device.vendor]. */
         fun forDevice(device: Device): CameraVendorApi = when (device.vendor) {
             "tapo" -> TapoApi
+            "tplink" -> OnvifVendorApi   // TP-LINK 物联摄像头走标准ONVIF
             "imou" -> ImouApi
             else -> OnvifVendorApi
         }

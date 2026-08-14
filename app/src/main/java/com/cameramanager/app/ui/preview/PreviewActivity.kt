@@ -138,11 +138,14 @@ class PreviewActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener { finish() }
         binding.btnMore.setOnClickListener {
             runCatching {
-                device?.let {
-                    val i = SettingsActivity.intent(this, it.id)
-                    val component = i.resolveActivity(packageManager)
-                    if (component != null) startActivity(i)
+                val dev = device
+                if (dev == null || dev.id <= 0) {
+                    Toast.makeText(this, "请先在设备列表中添加此摄像头后再进行设置", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
                 }
+                val i = SettingsActivity.intent(this, dev.id)
+                val component = i.resolveActivity(packageManager)
+                if (component != null) startActivity(i)
             }.onFailure { t ->
                 val msg = "打开设置失败: ${t.message ?: ""}".take(42)
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
@@ -308,25 +311,23 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun setupControls() {
-        // Tapo 风格：5个核心按钮 + 回放 + 更多
+        // Tapo 第一行：截图 | 录像 | 画质 | 日夜 | 全屏
         tap(binding.btnSnapshot) { captureSnapshot() }
         tap(binding.btnRecord) { toggleRecording() }
+        tap(binding.btnProfile) { showProfilePicker() }
+        tap(binding.btnNightMode) { toggleNightMode() }
+        tap(binding.btnFullScreen) { toggleFullScreen() }
+
+        // Tapo 第二行：音量 | 语音通话 | 对讲 | 云台 | 告警 | 回放
+        tap(binding.btnMute) { toggleMute() }
+        tap(binding.btnVoiceCall) { openVoiceCall() }
         tap(binding.btnAudio) { toggleAudioPanel() }
         tap(binding.btnPtz) { togglePtzPanel() }
+        tap(binding.btnAlarm) { toggleAlarm() }
         tap(binding.btnPlayback) { openPlayback() }
-        tap(binding.btnMoreTools) { openDeviceSettings() }
+
         // 右上角齿轮 → 设备设置
         tap(binding.btnMore) { openDeviceSettings() }
-
-        // ========= 静音/有声切换 =========
-        tap(binding.btnMute) {
-            val nowMuted = player.toggleMute()
-            runOnUiThread {
-                binding.muteLabel.text = if (nowMuted) "静音" else "有声"
-                binding.muteIcon.alpha = if (nowMuted) 0.5f else 1.0f
-            }
-            toast(if (nowMuted) "已静音" else "已恢复声音")
-        }
 
         // 对讲面板交互（TP-LINK 风格，不跳新页）
         tap(binding.audioClose) { hideAudioPanel(true) }
@@ -389,6 +390,57 @@ class PreviewActivity : AppCompatActivity() {
             { it.move(0f, 0f, PtzDirection.ZOOM_OUT.zoom) }, { it.stop() })
     }
 
+    private fun toggleMute() {
+        val nowMuted = player.toggleMute()
+        runOnUiThread {
+            binding.muteLabel.text = if (nowMuted) "静音" else "有声"
+            binding.muteIcon.alpha = if (nowMuted) 0.5f else 1.0f
+        }
+        toast(if (nowMuted) "已静音" else "已恢复声音")
+    }
+
+    private fun toggleNightMode() {
+        val cur = (featureStates["nightVision"] as? Int) ?: 0
+        val next = (cur + 1) % 3
+        exec { it.setNightVision(next) }
+        featureStates["nightVision"] = next
+        val labels = arrayOf("自动", "红外", "全彩")
+        toast("夜视: ${labels[next]}")
+    }
+
+    private fun toggleFullScreen() {
+        val flags = window.decorView.systemUiVisibility
+        if (flags and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            binding.topBar.visibility = View.GONE
+            toast("全屏模式")
+        } else {
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+            binding.topBar.visibility = View.VISIBLE
+            toast("已退出全屏")
+        }
+    }
+
+    private fun openVoiceCall() {
+        runCatching {
+            val d = device ?: return
+            startActivity(com.cameramanager.app.ui.voice.VoiceIntercomActivity.intent(this, d.id))
+        }.onFailure { t -> toast("语音通话失败: ${t.message}") }
+    }
+
+    private fun toggleAlarm() {
+        val cur = (featureStates["alarmOn"] as? Boolean) ?: true
+        val next = !cur
+        exec { ctl -> ctl.setDetectionSwitch("motion", next) }
+        featureStates["alarmOn"] = next
+        runOnUiThread {
+            binding.alarmLabel.text = if (next) "告警开" else "告警关"
+            binding.alarmIcon.alpha = if (next) 1.0f else 0.5f
+        }
+        toast(if (next) "告警已开启" else "告警已关闭")
+    }
+
     private fun togglePtzPanel() {
         val wasVisible = binding.ptzPanel.visibility == View.VISIBLE
         if (wasVisible) {
@@ -438,7 +490,7 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     // ========= 更多功能：带状态开关的面板（TP-LINK 风格） =========
-    private val featureStates = hashMapOf<String, Boolean>()
+    private val featureStates = hashMapOf<String, Any>()
 
     private fun syncStateFromDevice(d: Device, c: CameraCapabilities?) {
         featureStates["autoTrack"] = d.autoTrack
@@ -458,7 +510,7 @@ class PreviewActivity : AppCompatActivity() {
 
         fun addSwitch(name: String, key: String, action: suspend (CameraController, Boolean) -> CameraController.CameraCommandResult) {
             labels.add(name)
-            val st = featureStates.getOrPut(key) { false }
+            val st = (featureStates.getOrPut(key) { false } as? Boolean) ?: false
             initChecked.add(st)
             rows.add(name to { newVal ->
                 featureStates[key] = newVal
@@ -467,20 +519,23 @@ class PreviewActivity : AppCompatActivity() {
         }
 
         // note: 已按用户要求去掉 一键复位
-        if (c?.autoTrack == true)
-            addSwitch("AI人形追踪（当前:${if (featureStates.getOrDefault("autoTrack", false)) "开" else "关"}）", "autoTrack") { ctl, v ->
+        if (c?.autoTrack == true) {
+            val on = (featureStates["autoTrack"] as? Boolean) ?: false
+            addSwitch("AI人形追踪（当前:${if (on) "开" else "关"}）", "autoTrack") { ctl, v ->
                 ctl.toggleAutoTrack().also {
                     if (it is CameraController.CameraCommandResult.OkWithMessage) featureStates["autoTrack"] = v
                     else if (it is CameraController.CameraCommandResult.Ok) featureStates["autoTrack"] = v
                 }
             }
+        }
         if (c?.nightVision == true) {
             labels.add("夜视模式（切换:智能/红外/全彩）")
             initChecked.add(false)
             rows.add("夜视" to { _ -> showNightVisionPicker() })
         }
-        if (c?.privacyMask == true)
-            addSwitch("隐私遮蔽（当前:${if (featureStates.getOrDefault("privacyMask", false)) "开" else "关"}）", "privacyMask") { ctl, v ->
+        if (c?.privacyMask == true) {
+            val pm = (featureStates["privacyMask"] as? Boolean) ?: false
+            addSwitch("隐私遮蔽（当前:${if (pm) "开" else "关"}）", "privacyMask") { ctl, v ->
                 val r = ctl.setPrivacyMask(v)
                 if (r !is CameraController.CameraCommandResult.Unsupported &&
                     r !is CameraController.CameraCommandResult.Failed) {
@@ -489,14 +544,17 @@ class PreviewActivity : AppCompatActivity() {
                 }
                 r
             }
-        if (c?.whiteLight == true)
-            addSwitch("白光灯（当前:${if (featureStates.getOrDefault("whiteLight", false)) "开" else "关"}）", "whiteLight") { ctl, v ->
+        }
+        if (c?.whiteLight == true) {
+            val wl = (featureStates["whiteLight"] as? Boolean) ?: false
+            addSwitch("白光灯（当前:${if (wl) "开" else "关"}）", "whiteLight") { ctl, v ->
                 ctl.setWhiteLight(v).also {
                     if (it !is CameraController.CameraCommandResult.Unsupported &&
                         it !is CameraController.CameraCommandResult.Failed)
                         featureStates["whiteLight"] = v
                 }
             }
+        }
         if (c?.siren == true) {
             labels.add("声光威慑（一次性触发）")
             initChecked.add(false)

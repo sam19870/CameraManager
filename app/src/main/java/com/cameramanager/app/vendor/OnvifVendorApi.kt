@@ -20,17 +20,19 @@ object OnvifVendorApi : CameraVendorApi {
                 zoom = device.supportsPtz && onvif,
                 presets = device.supportsPtz && onvif,
                 cruise = device.supportsPtz && onvif,
-                autoTrack = false,           // ONVIF has no standard auto-track
-                nightVision = false,         // not in Profile S
+                autoTrack = false,
+                nightVision = onvif,           // ONVIF Imaging service 支持 IR Cut 切换
                 privacyMask = false,
-                whiteLight = false,
+                whiteLight = onvif,            // 部分ONVIF摄像头支持白光灯
                 siren = onvif,
                 voiceIntercom = device.supportsAudio,
                 voiceMessage = false,
                 firmwareUpgrade = false,
                 restart = onvif,
                 detectionRegion = onvif,
-                tfStorage = onvif
+                tfStorage = onvif,
+                videoConfig = false,
+                audioConfig = false
             )
         )
     }
@@ -68,7 +70,8 @@ object OnvifVendorApi : CameraVendorApi {
         ApiResult.Unsupported("AI人形追踪")
 
     override suspend fun setNightVision(device: Device, mode: Int) =
-        ApiResult.Unsupported("夜视模式")
+        if (OnvifClient.setIrCutFilter(device, mode))
+            ApiResult.Success(Unit) else ApiResult.Error("夜视模式切换失败（设备可能不支持ONVIF Imaging服务）")
 
     override suspend fun setPrivacyMask(device: Device, enabled: Boolean, regions: List<CameraVendorApi.Rect>) =
         ApiResult.Unsupported("电子区域遮蔽")
