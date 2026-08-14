@@ -27,6 +27,78 @@ object OnvifClient {
     private const val MULTICAST_PORT = 3702
     private const val DISCOVERY_TIMEOUT_MS = 2500
 
+    /** 设备真实 PTZ/媒体 profile token 的内存缓存（按设备 id），避免每次云台都重新 GetProfiles。 */
+    private val ptzProfileCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /**
+     * 解析设备真实 media profile token（标准 ONVIF GetProfiles 第2步）。
+     * 先查缓存；未命中则调 GetProfiles 取第一个 token 并缓存；全部失败回退 "Profile_1"。
+     * 替代之前硬编码 Profile_1（很多厂家 token 名不同，导致云台/预置位命令送不进去）。
+     */
+    suspend fun resolveProfileToken(device: Device): String = withContext(Dispatchers.IO) {
+        ptzProfileCache[device.id]?.let { return@withContext it }
+        val token = fetchProfileToken(device)
+        if (!token.isNullOrBlank()) {
+            ptzProfileCache[device.id] = token
+            return@withContext token
+        }
+        "Profile_1"
+    }
+
+    private suspend fun fetchProfileToken(device: Device): String? {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return null
+        val body = """<trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl"/>"""
+        val act = "http://www.onvif.org/ver10/media/wsdl/GetProfiles"
+        val resp = soapRequest(device, OnvifService.MEDIA, act, body)
+            ?: soapRequestToPath(device, "/onvif/device_service", act, body)
+            ?: return null
+        return Regex("Profiles[^>]*token=\"([^\"]+)\"").find(resp)?.groupValues?.getOrNull(1)
+    }
+
+    /** ONVIF 服务类型（用于按 GetCapabilities 的 XAddr 动态定位服务地址）。 */
+    private enum class OnvifService { DEVICE, MEDIA, PTZ, IMAGING, EVENTS }
+
+    /** 按设备 id 缓存的动态服务地址（路径部分，来自 GetCapabilities 的 XAddr）。 */
+    private class OnvifEndpoints(
+        val media: String? = null,
+        val ptz: String? = null,
+        val imaging: String? = null
+    )
+
+    private val endpointCache = java.util.concurrent.ConcurrentHashMap<Long, OnvifEndpoints>()
+
+    /**
+     * 解析设备各 ONVIF 服务地址（标准流程：GetCapabilities -> 各 XAddr）。
+     * 失败字段为 null，调用方回退默认路径。带内存缓存，避免每次请求都重新 GetCapabilities。
+     */
+    private suspend fun resolveEndpoints(device: Device): OnvifEndpoints {
+        endpointCache[device.id]?.let { return it }
+        val eps = fetchEndpoints(device) ?: OnvifEndpoints()
+        endpointCache[device.id] = eps
+        return eps
+    }
+
+    private fun fetchEndpoints(device: Device): OnvifEndpoints? {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return null
+        val body = """<tds:GetCapabilities xmlns:tds="http://www.onvif.org/ver10/device/wsdl"><tds:Category>All</tds:Category></tds:GetCapabilities>"""
+        val resp = soapRequestToPath(device, "/onvif/device_service",
+            "http://www.onvif.org/ver10/device/wsdl/GetCapabilities", body) ?: return null
+        return OnvifEndpoints(
+            media = xaddrPath(resp, "Media"),
+            ptz = xaddrPath(resp, "PTZ"),
+            imaging = xaddrPath(resp, "Imaging")
+        )
+    }
+
+    /** 从 GetCapabilities 应答里提取指定 section（Media/PTZ/Imaging）的 XAddr 的 path 部分。 */
+    private fun xaddrPath(resp: String, section: String): String? {
+        val sec = Regex("""<[\w:]*$section[\s>](.*?)</[\w:]*$section>""", RegexOption.DOT_MATCHES_ALL)
+            .find(resp)?.groupValues?.getOrNull(1) ?: return null
+        val xaddr = Regex("""<[\w:]*XAddr[^>]*>(.*?)</[\w:]*XAddr>""", RegexOption.DOT_MATCHES_ALL)
+            .find(sec)?.groupValues?.getOrNull(1)?.trim() ?: return null
+        return runCatching { java.net.URI(xaddr).path?.takeIf { !it.isNullOrBlank() } }.getOrNull()
+    }
+
     private val PROBE_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
  xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing"
@@ -152,7 +224,7 @@ object OnvifClient {
                  </tptz:Velocity>
                </tptz:ContinuousMove>"""
         }
-        soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove", body) != null
+        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove", body) != null
     }
 
     /**
@@ -163,45 +235,45 @@ object OnvifClient {
         val body = """<tev:TriggerAlarm>
                        <tev:Alarm>1</tev:Alarm>
                      </tev:TriggerAlarm>"""
-        soapRequest(device, "http://www.onvif.org/ver10/events/wsdl/TriggerAlarm", body) != null
+        soapRequest(device, OnvifService.EVENTS, "http://www.onvif.org/ver10/events/wsdl/TriggerAlarm", body) != null
     }
 
     /** Go to a saved PTZ preset by index. */
-    suspend fun gotoPreset(device: Device, index: Int): Boolean = withContext(Dispatchers.IO) {
+    suspend fun gotoPreset(device: Device, profileToken: String, index: Int): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
         val body = """<tptz:GotoPreset>
-                       <tptz:ProfileToken>Profile_1</tptz:ProfileToken>
+                       <tptz:ProfileToken>$profileToken</tptz:ProfileToken>
                        <tptz:PresetToken>$index</tptz:PresetToken>
                      </tptz:GotoPreset>"""
-        soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/GotoPreset", body) != null
+        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/GotoPreset", body) != null
     }
 
     /** Save / overwrite a PTZ preset at the current position. */
-    suspend fun setPreset(device: Device, index: Int, name: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun setPreset(device: Device, profileToken: String, index: Int, name: String): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
         val body = """<tptz:SetPreset>
-                       <tptz:ProfileToken>Profile_1</tptz:ProfileToken>
+                       <tptz:ProfileToken>$profileToken</tptz:ProfileToken>
                        <tptz:PresetName>$name</tptz:PresetName>
                        <tptz:PresetToken>$index</tptz:PresetToken>
                      </tptz:SetPreset>"""
-        soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/SetPreset", body) != null
+        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/SetPreset", body) != null
     }
 
     /** Remove a saved PTZ preset. */
-    suspend fun removePreset(device: Device, index: Int): Boolean = withContext(Dispatchers.IO) {
+    suspend fun removePreset(device: Device, profileToken: String, index: Int): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
         val body = """<tptz:RemovePreset>
-                       <tptz:ProfileToken>Profile_1</tptz:ProfileToken>
+                       <tptz:ProfileToken>$profileToken</tptz:ProfileToken>
                        <tptz:PresetToken>$index</tptz:PresetToken>
                      </tptz:RemovePreset>"""
-        soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/RemovePreset", body) != null
+        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/RemovePreset", body) != null
     }
 
     /** List all saved presets. */
-    suspend fun listPresets(device: Device): List<com.cameramanager.app.vendor.Preset> = withContext(Dispatchers.IO) {
+    suspend fun listPresets(device: Device, profileToken: String): List<com.cameramanager.app.vendor.Preset> = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext emptyList()
-        val body = """<tptz:GetPresets><tptz:ProfileToken>Profile_1</tptz:ProfileToken></tptz:GetPresets>"""
-        val resp = soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/GetPresets", body) ?: return@withContext emptyList()
+        val body = """<tptz:GetPresets><tptz:ProfileToken>$profileToken</tptz:ProfileToken></tptz:GetPresets>"""
+        val resp = soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/GetPresets", body) ?: return@withContext emptyList()
         // Parse <tt:Preset token="N"><tt:Name>...</tt:Name>...</tt:Preset>
         Regex("<tt:Preset\\s+token=\"(\\d+)\"[^>]*>(?:.*?<tt:Name>(.*?)</tt:Name>)?", RegexOption.DOT_MATCHES_ALL)
             .findAll(resp).map { m ->
@@ -210,17 +282,17 @@ object OnvifClient {
     }
 
     /** Toggle automatic patrol tour (cruise). */
-    suspend fun setAutoTour(device: Device, enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+    suspend fun setAutoTour(device: Device, profileToken: String, enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
         val op = if (enabled) "Start" else "Stop"
-        val body = """<tptz:${op}Tour><tptz:ProfileToken>Profile_1</tptz:ProfileToken><tptz:TourToken>Tour_1</tptz:TourToken></tptz:${op}Tour>"""
-        soapRequest(device, "http://www.onvif.org/ver20/ptz/wsdl/${op}Tour", body) != null
+        val body = """<tptz:${op}Tour><tptz:ProfileToken>$profileToken</tptz:ProfileToken><tptz:TourToken>Tour_1</tptz:TourToken></tptz:${op}Tour>"""
+        soapRequest(device, OnvifService.PTZ, "http://www.onvif.org/ver20/ptz/wsdl/${op}Tour", body) != null
     }
 
     /** Reboot the device via ONVIF device service. */
     suspend fun reboot(device: Device): Boolean = withContext(Dispatchers.IO) {
         if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
-        soapRequest(device, "http://www.onvif.org/ver10/device/wsdl/SystemReboot", "<tds:SystemReboot/>") != null
+        soapRequest(device, OnvifService.DEVICE, "http://www.onvif.org/ver10/device/wsdl/SystemReboot", "<tds:SystemReboot/>") != null
     }
 
     /** Set night vision (IR cut filter) mode via ONVIF Imaging service.
@@ -239,20 +311,142 @@ object OnvifClient {
                 <tt:IrCutFilter xmlns:tt="http://www.onvif.org/ver10/schema">$irCutMode</tt:IrCutFilter>
             </timg:ImagingSettings>
         </timg:SetImagingSettings>"""
-        soapRequestToPath(device, "/onvif/imaging",
+        soapRequest(device, OnvifService.IMAGING,
+            "http://www.onvif.org/ver20/imaging/wsdl/SetImagingSettings", body) != null
+    }
+
+    /**
+     * 获取设备真实抓拍图 URL（ONVIF Media GetSnapshotUri）。
+     * 返回该 Profile 的 JPEG 抓拍地址；失败返回 null。
+     * 参考：ONVIF Media Service GetSnapshotUri —— 部分设备需要用该 URL 直接 GET 得到 JPEG。
+     */
+    suspend fun getSnapshotUrl(device: Device, profileToken: String): String? = withContext(Dispatchers.IO) {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext null
+        val body = """<trt:GetSnapshotUri xmlns:trt="http://www.onvif.org/ver10/media/wsdl"><trt:ProfileToken>$profileToken</trt:ProfileToken></trt:GetSnapshotUri>"""
+        val act = "http://www.onvif.org/ver10/media/wsdl/GetSnapshotUri"
+        val resp = soapRequest(device, OnvifService.MEDIA, act, body) ?: return@withContext null
+        Regex("<[\\w:]*Uri[^>]*>([^<]+)<").find(resp)?.groupValues?.getOrNull(1)?.trim()
+    }
+
+    /**
+     * 下载抓拍图字节（HTTP GET，带 ONVIF 鉴权）。返回 JPEG 字节；失败返回 null。
+     * 抓拍 URL 通常形如 http://host:port/onvif/snapshot?profile=...
+     */
+    suspend fun fetchSnapshotBytes(device: Device, url: String): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val parsed = java.net.URI(url)
+            val host = parsed.host ?: device.host
+            val port = if (parsed.port > 0) parsed.port else device.onvifPort
+            val path = (parsed.path ?: "/") + (parsed.query?.let { "?$it" } ?: "")
+            val conn = (java.net.URL("http://$host:$port$path").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 4000
+                readTimeout = 4000
+            }
+            if (!device.username.isNullOrEmpty()) {
+                val auth = "Basic " + android.util.Base64.encodeToString(
+                    "${device.username}:${device.password.orEmpty()}".toByteArray(),
+                    android.util.Base64.NO_WRAP
+                )
+                conn.setRequestProperty("Authorization", auth)
+            }
+            val code = conn.responseCode
+            if (code in 200..299) conn.inputStream.use { it.readBytes() }
+            else { Log.w(TAG, "snapshot GET failed: HTTP $code"); null }
+        } catch (e: Exception) {
+            Log.w(TAG, "snapshot fetch error: ${e.message}")
+            null
+        }
+    }
+
+    /** 读取设备信息（厂商/型号/固件/序列号/硬件ID），GetDeviceInformation。 */
+    suspend fun getDeviceInformation(device: Device): Map<String, String> = withContext(Dispatchers.IO) {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext emptyMap()
+        val body = """<tds:GetDeviceInformation xmlns:tds="http://www.onvif.org/ver10/device/wsdl"/>"""
+        val resp = soapRequest(device, OnvifService.DEVICE,
+            "http://www.onvif.org/ver10/device/wsdl/GetDeviceInformation", body)
+            ?: return@withContext emptyMap()
+        fun txt(name: String) = Regex("<[\\w:]*$name[^>]*>([^<]+)<")
+            .find(resp)?.groupValues?.getOrNull(1)?.trim() ?: ""
+        mapOf(
+            "Manufacturer" to txt("Manufacturer"),
+            "Model" to txt("Model"),
+            "FirmwareVersion" to txt("FirmwareVersion"),
+            "SerialNumber" to txt("SerialNumber"),
+            "HardwareId" to txt("HardwareId")
+        )
+    }
+
+    /** 从 GetProfiles 应答解析 VideoSourceToken（无则回退 "VideoSource_1"）。 */
+    private suspend fun resolveVideoSourceToken(device: Device): String {
+        val body = """<trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl"/>"""
+        val act = "http://www.onvif.org/ver10/media/wsdl/GetProfiles"
+        val resp = soapRequest(device, OnvifService.MEDIA, act, body) ?: return "VideoSource_1"
+        return Regex("<[\\w:]*VideoSourceToken[^>]*>([^<]+)<").find(resp)?.groupValues?.getOrNull(1)?.trim()
+            ?: "VideoSource_1"
+    }
+
+    /** 读取摄像头图像参数（亮度/对比度/饱和度/锐度，ONVIF Imaging GetImagingSettings）。 */
+    suspend fun getImageSettings(device: Device): com.cameramanager.app.vendor.ImageSettings = withContext(Dispatchers.IO) {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext com.cameramanager.app.vendor.ImageSettings()
+        val token = resolveVideoSourceToken(device)
+        val body = """<timg:GetImagingSettings xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl"><timg:VideoSourceToken>$token</timg:VideoSourceToken></timg:GetImagingSettings>"""
+        val resp = soapRequest(device, OnvifService.IMAGING,
+            "http://www.onvif.org/ver20/imaging/wsdl/GetImagingSettings", body)
+            ?: return@withContext com.cameramanager.app.vendor.ImageSettings()
+        fun pct(name: String) = Regex("<[\\w:]*$name[^>]*>(\\d+)<")
+            .find(resp)?.groupValues?.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 100) ?: 50
+        com.cameramanager.app.vendor.ImageSettings(
+            brightness = pct("Brightness"),
+            contrast = pct("Contrast"),
+            saturation = pct("ColorSaturation"),
+            sharpness = pct("Sharpness")
+        )
+    }
+
+    /** 写入摄像头图像参数（ONVIF Imaging SetImagingSettings）。各值范围 0~100。 */
+    suspend fun setImageSettings(device: Device, s: com.cameramanager.app.vendor.ImageSettings): Boolean = withContext(Dispatchers.IO) {
+        if (device.onvifPort == 0 || device.username.isNullOrEmpty()) return@withContext false
+        val token = resolveVideoSourceToken(device)
+        val body = """<timg:SetImagingSettings>
+  <timg:VideoSourceToken>$token</timg:VideoSourceToken>
+  <timg:ImagingSettings>
+    <tt:Brightness xmlns:tt="http://www.onvif.org/ver10/schema">${s.brightness}</tt:Brightness>
+    <tt:Contrast xmlns:tt="http://www.onvif.org/ver10/schema">${s.contrast}</tt:Contrast>
+    <tt:ColorSaturation xmlns:tt="http://www.onvif.org/ver10/schema">${s.saturation}</tt:ColorSaturation>
+    <tt:Sharpness xmlns:tt="http://www.onvif.org/ver10/schema">${s.sharpness}</tt:Sharpness>
+  </timg:ImagingSettings>
+</timg:SetImagingSettings>"""
+        soapRequest(device, OnvifService.IMAGING,
             "http://www.onvif.org/ver20/imaging/wsdl/SetImagingSettings", body) != null
     }
 
 
     /**
-     * Issue a raw SOAP request to the device ONVIF service. Returns the response body
-     * or null on failure.
+     * 按服务类型动态定位路径发送 SOAP，多路径回退：
+     *  优先 GetCapabilities 解析出的 XAddr 路径，其次标准路径，最后 /onvif/device_service。
+     * 返回 response body，全部失败返回 null。标准流程见飞扬青云视频监控系统 ONVIF 模块。
      */
-    private fun soapRequest(
+    private suspend fun soapRequest(
         device: Device,
+        service: OnvifService,
         action: String,
         bodyXml: String
-    ): String? = soapRequestToPath(device, "/onvif/device_service", action, bodyXml)
+    ): String? {
+        val eps = resolveEndpoints(device)
+        val paths = when (service) {
+            OnvifService.DEVICE -> listOf("/onvif/device_service")
+            OnvifService.MEDIA -> listOfNotNull(eps.media, "/onvif/Media", "/onvif/device_service").distinct()
+            OnvifService.PTZ -> listOfNotNull(eps.ptz, "/onvif/ptz_service", "/onvif/device_service").distinct()
+            OnvifService.IMAGING -> listOfNotNull(eps.imaging, "/onvif/imaging", "/onvif/device_service").distinct()
+            OnvifService.EVENTS -> listOf("/onvif/event_service", "/onvif/device_service").distinct()
+        }
+        for (p in paths) {
+            val r = soapRequestToPath(device, p, action, bodyXml)
+            if (r != null) return r
+        }
+        return null
+    }
 
     /** SOAP request to a specific ONVIF service path (e.g., /onvif/imaging, /onvif/ptz). */
     private fun soapRequestToPath(
@@ -262,7 +456,8 @@ object OnvifClient {
         bodyXml: String
     ): String? {
         val url = "http://${device.host}:${device.onvifPort}$servicePath"
-        return try {
+        // 尝试1：标准 WS-UsernameToken PasswordDigest
+        val r1 = try {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 3000
@@ -304,6 +499,38 @@ object OnvifClient {
             else { Log.w(TAG, "soap $action failed: HTTP $code"); null }
         } catch (e: Exception) {
             Log.w(TAG, "soap $action error: ${e.message}")
+            null
+        }
+        if (r1 != null) return r1
+
+        // 尝试2：HTTP Basic 鉴权（兼容某些只认 Basic 的 ONVIF 设备）
+        if (device.username.isNullOrEmpty()) return null
+        val basicAuth = "Basic " + android.util.Base64.encodeToString(
+            "${device.username}:${device.password.orEmpty()}".toByteArray(),
+            android.util.Base64.NO_WRAP
+        )
+        return try {
+            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 3000
+                readTimeout = 3000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/soap+xml; charset=utf-8")
+                setRequestProperty("Authorization", basicAuth)
+            }
+            val envelope = """<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+ <s:Header>
+  <wsa:Action xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing">$action</wsa:Action>
+ </s:Header>
+ <s:Body>$bodyXml</s:Body>
+</s:Envelope>""".trimIndent()
+            conn.outputStream.use { it.write(envelope.toByteArray()) }
+            val code = conn.responseCode
+            if (code in 200..299) conn.inputStream.bufferedReader().use { it.readText() }
+            else { Log.w(TAG, "soap $action Basic failed: HTTP $code"); null }
+        } catch (e: Exception) {
+            Log.w(TAG, "soap $action Basic error: ${e.message}")
             null
         }
     }

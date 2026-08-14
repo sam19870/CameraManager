@@ -25,7 +25,9 @@ data class CameraCapabilities(
     /** 是否支持通过协议读写视频编码参数（分辨率/帧率/码率/编码） */
     val videoConfig: Boolean = false,
     /** 是否支持通过协议读写音频输入/输出开关、音量 */
-    val audioConfig: Boolean = false
+    val audioConfig: Boolean = false,
+    /** 是否支持通过 ONVIF Imaging 读写图像参数（亮度/对比度/饱和度/锐度） */
+    val imageConfig: Boolean = false
 )
 
 /**
@@ -73,6 +75,14 @@ data class VideoAudioConfig(
 
 /** A saved PTZ preset viewpoint. */
 data class Preset(val index: Int, val name: String, val enabled: Boolean = true)
+
+/** 摄像头图像参数（ONVIF Imaging 服务）。各值范围 0~100，默认 50。 */
+data class ImageSettings(
+    val brightness: Int = 50,   // 亮度
+    val contrast: Int = 50,     // 对比度
+    val saturation: Int = 50,   // 饱和度
+    val sharpness: Int = 50     // 锐度
+)
 
 /** Result of a vendor API call. */
 sealed class ApiResult<out T> {
@@ -167,6 +177,28 @@ interface CameraVendorApi {
     suspend fun checkFirmware(device: Device): ApiResult<FirmwareInfo>
     suspend fun upgradeFirmware(device: Device): ApiResult<Unit>
     suspend fun selfCheck(device: Device): ApiResult<SelfCheckReport>
+
+    // ---- 图像参数（亮度/对比度/饱和度/锐度，ONVIF Imaging 服务）----
+    /**
+     * 读取摄像头当前图像参数。走 ONVIF GetImagingSettings，各值范围 0~100（默认 50）。
+     * 不支持的摄像头返回 [ApiResult.Unsupported]，UI 自动灰显。
+     */
+    suspend fun getImageSettings(device: Device): ApiResult<ImageSettings>
+    /**
+     * 写入摄像头图像参数。走 ONVIF SetImagingSettings，写入后立即可在预览画面看到效果。
+     */
+    suspend fun setImageSettings(device: Device, settings: ImageSettings): ApiResult<Unit>
+
+    // ---- 设备信息（GetDeviceInformation）----
+    /** 读取设备详细信息：Manufacturer/Model/FirmwareVersion/SerialNumber/HardwareId。 */
+    suspend fun getDeviceInfo(device: Device): ApiResult<Map<String, String>>
+
+    // ---- 真实抓拍（ONVIF GetSnapshotUri）----
+    /**
+     * 获取摄像头真实抓拍图（走 ONVIF GetSnapshotUri，替代软截图）。
+     * 返回 JPEG 图片字节；设备不支持或抓取失败返回空数组。
+     */
+    suspend fun getSnapshot(device: Device): ByteArray
 
     /** A 0..1 normalized rectangle on the picture. */
     data class Rect(val x: Float, val y: Float, val w: Float, val h: Float)

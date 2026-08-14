@@ -339,7 +339,7 @@ class SettingsActivity : AppCompatActivity() {
 
         setRow(binding.rowDeviceInfo, android.R.drawable.ic_menu_more, R.color.icon_gray, "设备信息")
         binding.rowDeviceInfo.root.setOnClickListener {
-            val info = buildString {
+            val base = buildString {
                 append("名称：${d.name}\n")
                 append("厂商：${when (d.vendor) { "tapo" -> "TP-Link Tapo"; "tplink" -> "TP-LINK 物联"; "imou" -> "乐橙 Imou"; else -> "通用ONVIF" }}\n")
                 append("内网：${d.host}:${d.port}\n")
@@ -351,8 +351,27 @@ class SettingsActivity : AppCompatActivity() {
                 if (d.tunnelId > 0) append("绑定穿透：ID=${d.tunnelId}\n")
                 if (!d.publicHost.isNullOrEmpty()) append("公网：${d.publicHost}:${d.publicPort}\n")
             }
-            AlertDialog.Builder(this).setTitle("设备信息")
-                .setMessage(info).setPositiveButton("关闭", null).show()
+            val dialog = AlertDialog.Builder(this).setTitle("设备信息")
+                .setMessage("$base\n正在读取ONVIF设备详情…")
+                .setPositiveButton("关闭", null).show()
+            lifecycleScope.launch {
+                val r = runCatching {
+                    withContext(Dispatchers.IO) { CameraVendorApi.forDevice(d).getDeviceInfo(d) }
+                }.getOrNull()
+                val extra = when (r) {
+                    is ApiResult.Success -> buildString {
+                        val m = r.data
+                        append("设备厂商：${m["Manufacturer"] ?: "未知"}\n")
+                        append("设备型号：${m["Model"] ?: "未知"}\n")
+                        append("固件版本：${m["FirmwareVersion"] ?: "未知"}\n")
+                        append("序列号：${m["SerialNumber"] ?: "未知"}\n")
+                        if (!m["HardwareId"].isNullOrBlank()) append("硬件ID：${m["HardwareId"]}\n")
+                    }
+                    is ApiResult.Unsupported -> "（该设备协议不支持读取ONVIF详情）"
+                    else -> "（读取设备详情失败，多为设备未开放ONVIF）"
+                }
+                runCatching { dialog.setMessage("$base$extra") }
+            }
         }
 
         setRow(binding.rowDelete, android.R.drawable.ic_menu_delete, R.color.error_red, "删除设备")

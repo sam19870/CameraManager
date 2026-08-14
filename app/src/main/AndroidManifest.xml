@@ -81,6 +81,7 @@
         <activity android:name=".ui.settings.AlarmLogActivity" />
         <activity android:name=".ui.voice.VoiceIntercomActivity" />
         <activity android:name=".ui.MultiPreviewActivity" />
+        <activity android:name=".ui.PatrolActivity" />
         <activity android:name=".ui.manage.DeviceManageActivity" />
         <activity android:name=".ui.detection.DetectionRegionActivity" />
         <activity android:name=".ui.tunnel.TunnelManageActivity" />

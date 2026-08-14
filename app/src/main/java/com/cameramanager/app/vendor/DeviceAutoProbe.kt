@@ -154,22 +154,49 @@ object DeviceAutoProbe {
                 supportsPtz = caps.ptz
                 steps.add("  ✓ ONVIF 握手成功(端口$p) · PTZ=${caps.ptz} Zoom=${caps.zoom} Media=${caps.media}")
                 onStep(steps.last())
-                listOf("Profile_1" to true, "Profile_2" to false,
-                    "ProfileToken_1" to true, "ProfileToken_2" to false,
-                    "profile1" to true, "profile2" to false).forEach { (profile, isMain) ->
-                    val uri = runCatching { onvifGetStreamUri(tmp, profile) }.getOrNull()
-                    if (!uri.isNullOrBlank()) {
-                        val parsed = android.net.Uri.parse(uri)
-                        if (!parsed.path.isNullOrBlank() && parsed.path != "/") {
-                            val pth = parsed.path!!.trimStart('/')
-                            var localRtspPath = rtspPath
-                            if (isMain && mainRtspPath == null) {
-                                mainRtspPath = pth
-                                if (localRtspPath == null) { localRtspPath = pth; rtspPath = localRtspPath }
+                // 【标准 ONVIF 流程】先 GetProfiles 拿设备真实码流 token，再逐个 GetStreamUri
+                // 取代之前硬编码 "Profile_1/Profile_2"，兼容 token 名不同的厂家
+                val profiles = onvifGetProfiles(tmp)
+                if (profiles.isNotEmpty()) {
+                    steps.add("  ✓ ONVIF GetProfiles: ${profiles.joinToString()}")
+                    onStep(steps.last())
+                    profiles.forEachIndexed { idx, token ->
+                        val isMain = idx == 0 // 第一个 profile 通常为主码流(原画)
+                        val uri = runCatching { onvifGetStreamUri(tmp, token) }.getOrNull()
+                        if (!uri.isNullOrBlank()) {
+                            val parsed = android.net.Uri.parse(uri)
+                            if (!parsed.path.isNullOrBlank() && parsed.path != "/") {
+                                val pth = parsed.path!!.trimStart('/')
+                                if (isMain && mainRtspPath == null) {
+                                    mainRtspPath = pth
+                                    if (rtspPath == null) rtspPath = pth
+                                } else if (!isMain && subRtspPath == null) {
+                                    subRtspPath = pth
+                                }
+                                steps.add("  ✓ ONVIF $token => $pth (${if (isMain) "主码流(原画)" else "子码流(流畅)"})")
+                                onStep(steps.last())
                             }
-                            if (!isMain && subRtspPath == null) subRtspPath = pth
-                            steps.add("  ✓ ONVIF $profile => $pth (${if (isMain) "主码流(原画)" else "子码流(流畅)"})")
-                            onStep(steps.last())
+                        }
+                    }
+                } else {
+                    // 退化：标准 profile 名穷举
+                    listOf("Profile_1" to true, "Profile_2" to false,
+                        "ProfileToken_1" to true, "ProfileToken_2" to false,
+                        "profile1" to true, "profile2" to false).forEach { (profile, isMain) ->
+                        val uri = runCatching { onvifGetStreamUri(tmp, profile) }.getOrNull()
+                        if (!uri.isNullOrBlank()) {
+                            val parsed = android.net.Uri.parse(uri)
+                            if (!parsed.path.isNullOrBlank() && parsed.path != "/") {
+                                val pth = parsed.path!!.trimStart('/')
+                                if (isMain && mainRtspPath == null) {
+                                    mainRtspPath = pth
+                                    if (rtspPath == null) rtspPath = pth
+                                } else if (!isMain && subRtspPath == null) {
+                                    subRtspPath = pth
+                                }
+                                steps.add("  ✓ ONVIF $profile => $pth (${if (isMain) "主码流(原画)" else "子码流(流畅)"})")
+                                onStep(steps.last())
+                            }
                         }
                     }
                 }
@@ -484,6 +511,26 @@ object DeviceAutoProbe {
   </trt:StreamSetup>
  </trt:GetStreamUri></s:Body>
 </s:Envelope>"""
+
+    private val GET_PROFILES_ENV = """<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+ <s:Body><trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl"/></s:Body>
+</s:Envelope>"""
+
+    /** 调用 ONVIF GetProfiles，返回设备真实码流 token 列表（标准流程第2步，替代硬编码 Profile_1/2）。 */
+    private fun onvifGetProfiles(d: Device): List<String> {
+        if (d.onvifPort == 0 || d.username.isNullOrEmpty()) return emptyList()
+        val resp = soapRaw(d.host, d.onvifPort, "/onvif/Media",
+            "http://www.onvif.org/ver10/media/wsdl/GetProfiles", GET_PROFILES_ENV,
+            d.username, d.password ?: "")
+            ?: soapRaw(d.host, d.onvifPort, "/onvif/device_service",
+                "http://www.onvif.org/ver10/media/wsdl/GetProfiles", GET_PROFILES_ENV,
+                d.username, d.password ?: "")
+            ?: return emptyList()
+        // 响应形如 <trt:Profiles token="Profile_1">…</trt:Profiles>，前缀可能因厂家而异
+        return Regex("Profiles[^>]*token=\"([^\"]+)\"")
+            .findAll(resp).map { it.groupValues[1] }.distinct().toList()
+    }
 
     private fun onvifGetStreamUri(d: Device, profile: String): String? {
         if (d.onvifPort == 0 || d.username.isNullOrEmpty()) return null

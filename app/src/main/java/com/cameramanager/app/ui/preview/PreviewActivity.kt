@@ -731,16 +731,39 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun captureSnapshot() {
-        val bmp = player.captureFrame() ?: run {
-            com.cameramanager.app.util.LogCollector.log("Module", "[截图] 失败：captureFrame 返回 null（libVLC 不支持此机型）")
-            Toast.makeText(this, "截图失败（libVLC暂不支持此机型）", Toast.LENGTH_SHORT).show(); return
-        }
-        val path = StorageHelper.saveScreenshot(this, bmp, device?.name ?: "camera")
-        com.cameramanager.app.util.LogCollector.log("Module", "[截图] ${if (path != null) "已保存: $path" else "保存到相册失败"}")
-        Toast.makeText(this, if (path != null) "已保存截图" else "保存失败", Toast.LENGTH_SHORT).show()
-        if (path != null) {
-            val dev = device ?: return
-            lifecycleScope.launch {
+        val dev = device ?: return
+        lifecycleScope.launch {
+            // 尝试 ONVIF GetSnapshotUri 真实抓拍（走 ONVIF 的摄像头支持此方式，画质最高）
+            if (dev.onvifPort > 0) {
+                val api = CameraVendorApi.forDevice(dev)
+                val bytes = withContext(Dispatchers.IO) { api.getSnapshot(dev) }
+                if (bytes.isNotEmpty()) {
+                    val path = StorageHelper.saveSnapshotBytes(this@PreviewActivity, bytes, dev.name)
+                    com.cameramanager.app.util.LogCollector.log("Module", "[截图] ONVIF 抓拍 ${if (path != null) "已保存: $path" else "保存失败"}")
+                    if (path != null) {
+                        CameraApp.get().repository.addRecording(
+                            com.cameramanager.app.data.model.Recording(
+                                deviceId = dev.id, startTime = System.currentTimeMillis(),
+                                endTime = System.currentTimeMillis(), trigger = "snapshot", filePath = path
+                            )
+                        )
+                    }
+                    Toast.makeText(this@PreviewActivity, if (path != null) "已保存截图" else "保存失败", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                com.cameramanager.app.util.LogCollector.log("Module", "[截图] ONVIF 抓拍失败，回退到软截图")
+            }
+            // 回退：libVLC 软截图
+            val bmp = player.captureFrame()
+            if (bmp == null) {
+                com.cameramanager.app.util.LogCollector.log("Module", "[截图] 失败：captureFrame 返回 null（libVLC 不支持此机型）")
+                Toast.makeText(this@PreviewActivity, "截图失败（libVLC暂不支持此机型）", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val path = StorageHelper.saveScreenshot(this@PreviewActivity, bmp, dev.name)
+            com.cameramanager.app.util.LogCollector.log("Module", "[截图] ${if (path != null) "已保存: $path" else "保存到相册失败"}")
+            Toast.makeText(this@PreviewActivity, if (path != null) "已保存截图" else "保存失败", Toast.LENGTH_SHORT).show()
+            if (path != null) {
                 CameraApp.get().repository.addRecording(
                     com.cameramanager.app.data.model.Recording(
                         deviceId = dev.id, startTime = System.currentTimeMillis(),

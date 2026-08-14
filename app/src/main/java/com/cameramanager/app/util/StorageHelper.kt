@@ -50,6 +50,19 @@ object StorageHelper {
         }
     }
 
+    /** Save raw image bytes (JPEG from ONVIF GetSnapshotUri) as .jpg and return the path. */
+    fun saveSnapshotBytes(context: Context, bytes: ByteArray, deviceName: String): String? {
+        val dir = screenshotsDir(context)
+        val file = File(dir, "SNAP_${sanitize(deviceName)}_${DATE_FMT.format(Date())}.jpg")
+        return try {
+            FileOutputStream(file).use { it.write(bytes) }
+            file.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     /** Create a new recording output file for manual recording. */
     fun newRecordingFile(context: Context, deviceName: String): File {
         val dir = recordingsDir(context)

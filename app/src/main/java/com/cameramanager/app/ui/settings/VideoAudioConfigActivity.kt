@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -16,6 +17,7 @@ import com.cameramanager.app.data.model.Device
 import com.cameramanager.app.databinding.ActivityVideoAudioConfigBinding
 import com.cameramanager.app.vendor.ApiResult
 import com.cameramanager.app.vendor.CameraVendorApi
+import com.cameramanager.app.vendor.ImageSettings
 import com.cameramanager.app.vendor.VideoAudioConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,6 +39,10 @@ class VideoAudioConfigActivity : AppCompatActivity() {
     private var current: VideoAudioConfig? = null
     /** 设备是否支持写回（=Tapo 支持，其他只读） */
     private var canWrite = false
+    /** 图像参数当前编辑值（ONVIF Imaging） */
+    private var currentImage: ImageSettings? = null
+    /** 是否允许写回图像参数（ONVIF 设备支持 SetImagingSettings） */
+    private var imageCanWrite = false
 
     companion object {
         private const val EXTRA_DEVICE_ID = "device_id"
@@ -70,6 +76,7 @@ class VideoAudioConfigActivity : AppCompatActivity() {
                 }
                 canWrite = d.vendor == "tapo"
                 reloadFromCamera()
+                loadImageSettings()
             }.onFailure { t ->
                 Log.w(TAG, "load device failed: ${t.message}", t)
                 Toast.makeText(this@VideoAudioConfigActivity, "加载设备失败", Toast.LENGTH_SHORT).show()
@@ -79,9 +86,54 @@ class VideoAudioConfigActivity : AppCompatActivity() {
 
         // 绑定所有行的点击事件
         bindRowClicks()
+        bindImageSeekbars()
 
         binding.btnReset.setOnClickListener { reloadFromCamera() }
         binding.btnSave.setOnClickListener { saveToCamera() }
+    }
+
+    /** 图像参数 SeekBar 监听：拖动即更新当前值，保存时统一下发。 */
+    private fun bindImageSeekbars() {
+        fun wire(seek: SeekBar, value: TextView, updater: (Int) -> ImageSettings) {
+            seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                    if (fromUser) {
+                        currentImage = updater(p)
+                        value.text = "$p"
+                    }
+                }
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {}
+            })
+        }
+        wire(binding.seekBrightness, binding.tvBrightnessValue) { p -> (currentImage ?: ImageSettings()).copy(brightness = p) }
+        wire(binding.seekContrast, binding.tvContrastValue) { p -> (currentImage ?: ImageSettings()).copy(contrast = p) }
+        wire(binding.seekSaturation, binding.tvSaturationValue) { p -> (currentImage ?: ImageSettings()).copy(saturation = p) }
+        wire(binding.seekSharpness, binding.tvSharpnessValue) { p -> (currentImage ?: ImageSettings()).copy(sharpness = p) }
+    }
+
+    /** 从摄像头读取图像参数（ONVIF Imaging），不支持则隐藏该分组。 */
+    private fun loadImageSettings() {
+        val d = device ?: return
+        val api = CameraVendorApi.forDevice(d)
+        imageCanWrite = d.onvifPort > 0
+        lifecycleScope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { api.getImageSettings(d) }.getOrNull() }
+            val s = (r as? ApiResult.Success)?.data
+            binding.tvImageGroupTitle.visibility = View.GONE
+            binding.cardImage.visibility = View.GONE
+            if (s != null) {
+                currentImage = s
+                binding.seekBrightness.progress = s.brightness; binding.tvBrightnessValue.text = "${s.brightness}"
+                binding.seekContrast.progress = s.contrast; binding.tvContrastValue.text = "${s.contrast}"
+                binding.seekSaturation.progress = s.saturation; binding.tvSaturationValue.text = "${s.saturation}"
+                binding.seekSharpness.progress = s.sharpness; binding.tvSharpnessValue.text = "${s.sharpness}"
+                binding.tvImageGroupTitle.visibility =
+                    if (imageCanWrite) View.VISIBLE else View.GONE
+                binding.cardImage.visibility =
+                    if (imageCanWrite) View.VISIBLE else View.GONE
+            }
+        }
     }
 
     /** 从摄像头重新读取所有参数 */
@@ -414,13 +466,23 @@ class VideoAudioConfigActivity : AppCompatActivity() {
         val d = device
         val cfg = current
         if (d == null || cfg == null) return
-        if (!canWrite) {
+        if (!canWrite && !imageCanWrite) {
             Toast.makeText(this, "该设备协议不支持参数写入，请使用厂商官方App", Toast.LENGTH_LONG).show()
             return
         }
         val api = CameraVendorApi.forDevice(d)
         lifecycleScope.launch {
             binding.btnSave.isEnabled = false
+            // 图像参数（ONVIF Imaging）单独下发
+            if (imageCanWrite && currentImage != null) {
+                val img = currentImage!!
+                withContext(Dispatchers.IO) { runCatching { api.setImageSettings(d, img) } }
+                Toast.makeText(this@VideoAudioConfigActivity, "图像参数已写入摄像头", Toast.LENGTH_SHORT).show()
+            }
+            if (!canWrite) {
+                binding.btnSave.isEnabled = true
+                return@launch
+            }
             val r = withContext(Dispatchers.IO) { runCatching { api.setVideoAudioConfig(d, cfg) }.getOrNull() }
             when (r) {
                 is ApiResult.Success -> {

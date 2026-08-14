@@ -8,6 +8,11 @@
         android:title="分屏"
         app:showAsAction="always|withText"/>
     <item
+        android:id="@+id/action_patrol"
+        android:icon="@drawable/ic_playback"
+        android:title="轮巡"
+        app:showAsAction="always|withText"/>
+    <item
         android:id="@+id/action_add"
         android:icon="@drawable/ic_add"
         android:title="添加"

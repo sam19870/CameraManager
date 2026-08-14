@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg_dark">
+
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+        android:background="@color/bg_dark" app:title="视频轮巡"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_back_white"/>
+
+    <!-- 单画面轮巡播放区 -->
+    <FrameLayout android:id="@+id/videoLayout"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:background="@color/black">
+
+        <org.videolan.libvlc.util.VLCVideoLayout
+            android:id="@+id/videoSurface"
+            android:layout_width="match_parent" android:layout_height="match_parent"/>
+
+        <!-- 当前设备名 -->
+        <TextView android:id="@+id/currentName"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="top|start" android:layout_margin="12dp"
+            android:paddingHorizontal="10dp" android:paddingVertical="5dp"
+            android:background="@drawable/bg_status_pill"
+            android:textColor="@color/white" android:textSize="13sp" android:textStyle="bold"
+            android:text="当前通道：--"/>
+
+        <!-- 状态 -->
+        <TextView android:id="@+id/statusText"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="top|end" android:layout_margin="12dp"
+            android:paddingHorizontal="10dp" android:paddingVertical="5dp"
+            android:background="@drawable/bg_status_pill"
+            android:textColor="@color/white" android:textSize="12sp"
+            android:text="连接中…"/>
+
+        <!-- 空状态 -->
+        <LinearLayout android:id="@+id/emptyState"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="center"
+            android:visibility="gone" android:padding="32dp">
+            <ImageView android:layout_width="86dp" android:layout_height="86dp"
+                android:src="@drawable/ic_view_quilt" app:tint="@color/text_tertiary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="暂无可轮巡的摄像头"
+                android:textColor="@color/text_secondary" android:textSize="15sp"
+                android:layout_marginTop="16dp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="请先添加设备，或使用局域网扫描发现摄像头"
+                android:textColor="@color/text_tertiary" android:textSize="12sp"
+                android:layout_marginTop="6dp"/>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- 控制条：上一台 / 播放暂停 / 下一台 -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center"
+        android:paddingHorizontal="16dp" android:paddingVertical="12dp"
+        android:background="@color/bg_dark">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPrev" style="@style/ChipButton"
+            android:text="上一台" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginEnd="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPlayPause" style="@style/ChipButton"
+            android:text="暂停" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginHorizontal="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNext" style="@style/ChipButton"
+            android:text="下一台" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginStart="6dp"/>
+    </LinearLayout>
+
+    <!-- 轮巡间隔 + 通道列表 -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:background="@color/bg_page">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:paddingHorizontal="16dp" android:paddingVertical="10dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="轮巡间隔" android:textColor="@color/text_primary"
+                android:textSize="14sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/intervalLabel"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="12dp" android:textColor="@color/brand_primary"
+                android:textSize="13sp" android:textStyle="bold" android:text="5 秒"/>
+            <SeekBar android:id="@+id/intervalSeek"
+                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="12dp" android:max="30" android:progress="4"
+                android:progressTint="@color/brand_primary" android:thumbTint="@color/brand_primary"/>
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"/>
+    </LinearLayout>
+</LinearLayout>

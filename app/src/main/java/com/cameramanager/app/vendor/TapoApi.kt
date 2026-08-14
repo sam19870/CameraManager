@@ -163,6 +163,17 @@ object TapoApi : CameraVendorApi {
     override suspend fun setZoom(device: Device, ratio: Float) =
         ApiResult.Unsupported("变焦")  // Tapo 消费级摄像头普遍无光学变焦
 
+    override suspend fun getImageSettings(device: Device) =
+        ApiResult.Success(ImageSettings())  // Tapo 图像参数走手机端解码，无通用读取接口
+
+    override suspend fun setImageSettings(device: Device, settings: ImageSettings) =
+        ApiResult.Unsupported("图像参数写入")  // Tapo 私有协议未开放 ONVIF Imaging
+
+    override suspend fun getDeviceInfo(device: Device) =
+        ApiResult.Unsupported("设备信息读取")  // Tapo 走私有 RPC，此处不开放
+
+    override suspend fun getSnapshot(device: Device): ByteArray = ByteArray(0)  // Tapo 私有协议，抓图走软截图
+
     // ---- 语音 ----
     override suspend fun startVoiceCall(device: Device): ApiResult<String> {
         // 开启设备端对讲通道后，音频走 UDP/TCP，由 VoiceIntercom 模块处理

@@ -130,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_multiscreen -> { safeStart(Intent(this, MultiPreviewActivity::class.java)); true }
+            R.id.action_patrol -> { safeStart(Intent(this, PatrolActivity::class.java)); true }
             R.id.action_add -> { safeStart(Intent(this, AddDeviceActivity::class.java)); true }
             else -> super.onOptionsItemSelected(item)
         }

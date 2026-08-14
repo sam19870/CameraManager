@@ -40,39 +40,40 @@ object ImouApi : CameraVendorApi {
                 detectionRegion = onvif,
                 tfStorage = onvif,
                 videoConfig = false,
-                audioConfig = false
+                audioConfig = false,
+                imageConfig = onvif
             )
         )
     }
 
     // ---- PTZ ----
     override suspend fun ptzMove(device: Device, pan: Float, tilt: Float, zoom: Float) =
-        if (OnvifClient.ptzMove(device, "Profile_1", pan, tilt, zoom))
+        if (OnvifClient.ptzMove(device, OnvifClient.resolveProfileToken(device), pan, tilt, zoom))
             ApiResult.Success(Unit) else ApiResult.Error("云台控制失败")
 
     override suspend fun ptzStop(device: Device) =
-        if (OnvifClient.ptzMove(device, "Profile_1", 0f, 0f, 0f))
+        if (OnvifClient.ptzMove(device, OnvifClient.resolveProfileToken(device), 0f, 0f, 0f))
             ApiResult.Success(Unit) else ApiResult.Error("停止云台失败")
 
     override suspend fun ptzGotoPreset(device: Device, index: Int): ApiResult<Unit> =
-        if (OnvifClient.gotoPreset(device, index)) ApiResult.Success(Unit)
+        if (OnvifClient.gotoPreset(device, OnvifClient.resolveProfileToken(device), index)) ApiResult.Success(Unit)
         else ApiResult.Unsupported("预置位")
 
     override suspend fun ptzSavePreset(device: Device, index: Int, name: String): ApiResult<Unit> =
-        if (OnvifClient.setPreset(device, index, name)) ApiResult.Success(Unit)
+        if (OnvifClient.setPreset(device, OnvifClient.resolveProfileToken(device), index, name)) ApiResult.Success(Unit)
         else ApiResult.Unsupported("保存预置位")
 
     override suspend fun ptzDeletePreset(device: Device, index: Int): ApiResult<Unit> =
-        if (OnvifClient.removePreset(device, index)) ApiResult.Success(Unit)
+        if (OnvifClient.removePreset(device, OnvifClient.resolveProfileToken(device), index)) ApiResult.Success(Unit)
         else ApiResult.Unsupported("删除预置位")
 
     override suspend fun listPresets(device: Device) =
-        ApiResult.Success(OnvifClient.listPresets(device))
+        ApiResult.Success(OnvifClient.listPresets(device, OnvifClient.resolveProfileToken(device)))
 
     override suspend fun ptzHome(device: Device) = ptzGotoPreset(device, 0)
 
     override suspend fun setCruise(device: Device, enabled: Boolean): ApiResult<Unit> =
-        if (OnvifClient.setAutoTour(device, enabled)) ApiResult.Success(Unit)
+        if (OnvifClient.setAutoTour(device, OnvifClient.resolveProfileToken(device), enabled)) ApiResult.Success(Unit)
         else ApiResult.Unsupported("自动巡航")
 
     override suspend fun setAutoTrack(device: Device, enabled: Boolean) =
@@ -87,8 +88,27 @@ object ImouApi : CameraVendorApi {
         ApiResult.Unsupported("电子区域遮蔽（请用乐橙官方App设置）")
 
     override suspend fun setZoom(device: Device, ratio: Float) =
-        if (OnvifClient.ptzMove(device, "Profile_1", 0f, 0f, (ratio - 0.5f) * 0.4f))
+        if (OnvifClient.ptzMove(device, OnvifClient.resolveProfileToken(device), 0f, 0f, (ratio - 0.5f) * 0.4f))
             ApiResult.Success(Unit) else ApiResult.Error("变焦失败")
+
+    override suspend fun getImageSettings(device: Device): ApiResult<ImageSettings> =
+        if (device.onvifPort > 0) ApiResult.Success(OnvifClient.getImageSettings(device))
+        else ApiResult.Unsupported("图像参数")
+
+    override suspend fun setImageSettings(device: Device, settings: ImageSettings): ApiResult<Unit> =
+        if (OnvifClient.setImageSettings(device, settings)) ApiResult.Success(Unit)
+        else ApiResult.Error("写入图像参数失败")
+
+    override suspend fun getDeviceInfo(device: Device): ApiResult<Map<String, String>> =
+        if (device.onvifPort > 0) ApiResult.Success(OnvifClient.getDeviceInformation(device))
+        else ApiResult.Unsupported("设备信息读取")
+
+    override suspend fun getSnapshot(device: Device): ByteArray {
+        if (device.onvifPort <= 0) return ByteArray(0)
+        val token = OnvifClient.resolveProfileToken(device)
+        val url = OnvifClient.getSnapshotUrl(device, token) ?: return ByteArray(0)
+        return OnvifClient.fetchSnapshotBytes(device, url) ?: ByteArray(0)
+    }
 
     // ---- 语音 ----
     override suspend fun startVoiceCall(device: Device) =
