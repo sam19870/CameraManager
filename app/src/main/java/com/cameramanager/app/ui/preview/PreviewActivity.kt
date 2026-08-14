@@ -292,18 +292,26 @@ class PreviewActivity : AppCompatActivity() {
         }
     }
 
-    private fun pressHold(v: View, onDown: suspend (CameraController) -> Unit, onUp: suspend (CameraController) -> Unit) {
+    private fun pressHold(v: View, name: String, onDown: suspend (CameraController) -> Unit, onUp: suspend (CameraController) -> Unit) {
         v.setOnTouchListener { _, event ->
             when (event.action) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     // 强力触感反馈：LONG_PRESS 振动最明显，确保用户知道"按住了"
                     v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    lifecycleScope.launch { controller?.let { onDown(it) } }
+                    com.cameramanager.app.util.LogCollector.log("Module", "[云台:$name] 按下")
+                    lifecycleScope.launch {
+                        runCatching { controller?.let { onDown(it) } }
+                            .onFailure { com.cameramanager.app.util.LogCollector.logError("Module", "[云台:$name] 按下异常", it) }
+                    }
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
                     // 松手时也给一个短触感，确认松手成功
                     v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    lifecycleScope.launch { controller?.let { onUp(it) } }
+                    com.cameramanager.app.util.LogCollector.log("Module", "[云台:$name] 松开")
+                    lifecycleScope.launch {
+                        runCatching { controller?.let { onUp(it) } }
+                            .onFailure { com.cameramanager.app.util.LogCollector.logError("Module", "[云台:$name] 松开异常", it) }
+                    }
                 }
             }
             true
@@ -376,22 +384,23 @@ class PreviewActivity : AppCompatActivity() {
         tap(binding.btnCallAnswer) { startVoiceIfPermitted() }
         tap(binding.btnCallHangup) { stopVoice() }
 
-        pressHold(binding.ptzUp,
+        pressHold(binding.ptzUp, "上",
             { it.move(0f, PtzDirection.UP.tilt) }, { it.stop() })
-        pressHold(binding.ptzDown,
+        pressHold(binding.ptzDown, "下",
             { it.move(0f, PtzDirection.DOWN.tilt) }, { it.stop() })
-        pressHold(binding.ptzLeft,
+        pressHold(binding.ptzLeft, "左",
             { it.move(PtzDirection.LEFT.pan, 0f) }, { it.stop() })
-        pressHold(binding.ptzRight,
+        pressHold(binding.ptzRight, "右",
             { it.move(PtzDirection.RIGHT.pan, 0f) }, { it.stop() })
-        pressHold(binding.ptzZoomIn,
+        pressHold(binding.ptzZoomIn, "变焦+",
             { it.move(0f, 0f, PtzDirection.ZOOM_IN.zoom) }, { it.stop() })
-        pressHold(binding.ptzZoomOut,
+        pressHold(binding.ptzZoomOut, "变焦-",
             { it.move(0f, 0f, PtzDirection.ZOOM_OUT.zoom) }, { it.stop() })
     }
 
     private fun toggleMute() {
         val nowMuted = player.toggleMute()
+        com.cameramanager.app.util.LogCollector.log("Module", "[静音] -> ${if (nowMuted) "已静音" else "已恢复声音"}")
         runOnUiThread {
             binding.muteLabel.text = if (nowMuted) "静音" else "有声"
             binding.muteIcon.alpha = if (nowMuted) 0.5f else 1.0f
@@ -400,11 +409,11 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun toggleNightMode() {
+        val labels = arrayOf("自动", "红外", "全彩")
         val cur = (featureStates["nightVision"] as? Int) ?: 0
         val next = (cur + 1) % 3
-        exec { it.setNightVision(next) }
+        exec("夜视切换:${labels[next]}") { it.setNightVision(next) }
         featureStates["nightVision"] = next
-        val labels = arrayOf("自动", "红外", "全彩")
         toast("夜视: ${labels[next]}")
     }
 
@@ -426,13 +435,17 @@ class PreviewActivity : AppCompatActivity() {
         runCatching {
             val d = device ?: return
             startActivity(com.cameramanager.app.ui.voice.VoiceIntercomActivity.intent(this, d.id))
-        }.onFailure { t -> toast("语音通话失败: ${t.message}") }
+            com.cameramanager.app.util.LogCollector.log("Module", "[语音通话] 打开成功")
+        }.onFailure { t ->
+            com.cameramanager.app.util.LogCollector.logError("Module", "[语音通话] 打开失败", t)
+            toast("语音通话失败: ${t.message}")
+        }
     }
 
     private fun toggleAlarm() {
         val cur = (featureStates["alarmOn"] as? Boolean) ?: true
         val next = !cur
-        exec { ctl -> ctl.setDetectionSwitch("motion", next) }
+        exec("告警开关") { ctl -> ctl.setDetectionSwitch("motion", next) }
         featureStates["alarmOn"] = next
         runOnUiThread {
             binding.alarmLabel.text = if (next) "告警开" else "告警关"
@@ -456,7 +469,11 @@ class PreviewActivity : AppCompatActivity() {
         runCatching {
             val d = device ?: return
             startActivity(PlaybackActivity.intent(this, d.id))
-        }.onFailure { t -> toast("打开回放失败: ${t.message}") }
+            com.cameramanager.app.util.LogCollector.log("Module", "[回放] 打开成功")
+        }.onFailure { t ->
+            com.cameramanager.app.util.LogCollector.logError("Module", "[回放] 打开失败", t)
+            toast("打开回放失败: ${t.message}")
+        }
     }
 
     private fun openDeviceSettings() { showMoreToolsPanel() }
@@ -514,7 +531,7 @@ class PreviewActivity : AppCompatActivity() {
             initChecked.add(st)
             rows.add(name to { newVal ->
                 featureStates[key] = newVal
-                exec { action(it, newVal) }
+                exec(name) { action(it, newVal) }
             })
         }
 
@@ -559,7 +576,7 @@ class PreviewActivity : AppCompatActivity() {
             labels.add("声光威慑（一次性触发）")
             initChecked.add(false)
             rows.add("威慑" to { _ ->
-                exec { it.triggerSiren(true); it.triggerSiren(false) }
+                exec("声光威慑") { it.triggerSiren(true); it.triggerSiren(false) }
             })
         }
 
@@ -584,7 +601,7 @@ class PreviewActivity : AppCompatActivity() {
                     .setItems(items) { dl, w ->
                         val vol = w * 10
                         lifecycleScope.launch {
-                            exec { it.setSpeakerVolume(vol); CameraController.CameraCommandResult.Ok }
+                            exec("调节扬声器音量:$vol") { it.setSpeakerVolume(vol); CameraController.CameraCommandResult.Ok }
                             withContext(Dispatchers.Main) { toast("扬声器音量: $vol%") }
                         }
                         dl.dismiss()
@@ -598,7 +615,7 @@ class PreviewActivity : AppCompatActivity() {
                     .setItems(items) { dl, w ->
                         val vol = w * 10
                         lifecycleScope.launch {
-                            exec { it.setMicVolume(vol); CameraController.CameraCommandResult.Ok }
+                            exec("调节麦克风音量:$vol") { it.setMicVolume(vol); CameraController.CameraCommandResult.Ok }
                             withContext(Dispatchers.Main) { toast("收音音量: $vol%") }
                         }
                         dl.dismiss()
@@ -635,7 +652,7 @@ class PreviewActivity : AppCompatActivity() {
     private fun showNightVisionPicker() {
         val labels = arrayOf("智能夜视", "红外夜视", "全彩夜视")
         AlertDialog.Builder(this).setTitle("夜视模式")
-            .setItems(labels) { _, which -> exec { it.setNightVision(which) } }.show()
+            .setItems(labels) { _, which -> exec("日夜模式切换:${which}") { it.setNightVision(which) } }.show()
     }
 
     private fun showPresetPicker() {
@@ -663,7 +680,7 @@ class PreviewActivity : AppCompatActivity() {
             AlertDialog.Builder(this@PreviewActivity).setTitle("预置位（点前N项跳转；后3项为操作）")
                 .setItems(items + ops) { _, which ->
                     when {
-                        which < data.size -> exec { it.gotoPreset(data[which].index) }
+                        which < data.size -> exec("云台预置位跳转") { it.gotoPreset(data[which].index) }
                         which == data.size -> renamePresetDialog(data)
                         which == data.size + 1 -> showDeletePresetDialog(data)
                         else -> savePresetDialog()
@@ -689,7 +706,7 @@ class PreviewActivity : AppCompatActivity() {
                     .setPositiveButton("保存") { _, _ ->
                         val newName = et.text.toString().ifEmpty { p.name }
                         // 相同 index 重新保存 = 覆盖名称 (ONVIF/Tapo 通用语义)
-                        exec { it.savePreset(p.index, newName) }
+                        exec("保存预置位") { it.savePreset(p.index, newName) }
                     }.setNegativeButton("取消", null).show()
             }.setNegativeButton("取消", null).show()
     }
@@ -699,7 +716,7 @@ class PreviewActivity : AppCompatActivity() {
         AlertDialog.Builder(this@PreviewActivity)
             .setTitle("删除预置位")
             .setItems(labels) { _, which ->
-                if (which in data.indices) exec { it.deletePreset(data[which].index) }
+                if (which in data.indices) exec("删除预置位") { it.deletePreset(data[which].index) }
             }.show()
     }
 
@@ -709,15 +726,17 @@ class PreviewActivity : AppCompatActivity() {
             .setPositiveButton("保存") { _, _ ->
                 val name = input.text.toString().ifEmpty { "预置位" }
                 val idx = (presets.maxOfOrNull { it.index } ?: 0) + 1
-                exec { it.savePreset(idx, name) }
+                exec("保存预置位") { it.savePreset(idx, name) }
             }.setNegativeButton("取消", null).show()
     }
 
     private fun captureSnapshot() {
         val bmp = player.captureFrame() ?: run {
+            com.cameramanager.app.util.LogCollector.log("Module", "[截图] 失败：captureFrame 返回 null（libVLC 不支持此机型）")
             Toast.makeText(this, "截图失败（libVLC暂不支持此机型）", Toast.LENGTH_SHORT).show(); return
         }
         val path = StorageHelper.saveScreenshot(this, bmp, device?.name ?: "camera")
+        com.cameramanager.app.util.LogCollector.log("Module", "[截图] ${if (path != null) "已保存: $path" else "保存到相册失败"}")
         Toast.makeText(this, if (path != null) "已保存截图" else "保存失败", Toast.LENGTH_SHORT).show()
         if (path != null) {
             val dev = device ?: return
@@ -740,6 +759,7 @@ class PreviewActivity : AppCompatActivity() {
             binding.recordIndicator.visibility = View.GONE
             CameraStreamService.stop(this)
             addRecordingEntry()
+            com.cameramanager.app.util.LogCollector.log("Module", "[录像] 已停止并保存")
             Toast.makeText(this, "已停止录像", Toast.LENGTH_SHORT).show()
         } else {
             recording = true
@@ -748,6 +768,7 @@ class PreviewActivity : AppCompatActivity() {
             binding.recordIcon.setImageResource(R.drawable.ic_record)
             binding.recordIndicator.visibility = View.VISIBLE
             CameraStreamService.start(this, recording = true)
+            com.cameramanager.app.util.LogCollector.log("Module", "[录像] 开始本地录像")
             Toast.makeText(this, "开始本地录像", Toast.LENGTH_SHORT).show()
         }
     }
@@ -780,16 +801,30 @@ class PreviewActivity : AppCompatActivity() {
         Toast.makeText(this, "已开启悬浮窗预览", Toast.LENGTH_SHORT).show()
     }
 
-    private fun exec(action: suspend (CameraController) -> CameraController.CameraCommandResult) {
-        val c = controller ?: run { Toast.makeText(this, "正在连接设备…", Toast.LENGTH_SHORT).show(); return }
+    /** 统一协议操作入口：每个模块的每次操作（正常/失败/不支持/异常）都记录到日志，
+     *  方便排查哪个模块哪个功能出问题，无需用户口述。 */
+    private fun exec(actionName: String, action: suspend (CameraController) -> CameraController.CameraCommandResult) {
+        val c = controller ?: run {
+            com.cameramanager.app.util.LogCollector.log("Module", "[$actionName] 未连接设备，已跳过")
+            Toast.makeText(this, "正在连接设备…", Toast.LENGTH_SHORT).show(); return
+        }
+        com.cameramanager.app.util.LogCollector.log("Module", "[$actionName] 开始执行")
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { action(c) }
+            val result = try {
+                withContext(Dispatchers.IO) { action(c) }
+            } catch (e: Exception) {
+                com.cameramanager.app.util.LogCollector.logError("Module", "[$actionName] 抛异常", e)
+                Toast.makeText(this@PreviewActivity, "$actionName 异常: ${e.message}", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
             val msg = when (result) {
                 is CameraController.CameraCommandResult.Ok -> null
                 is CameraController.CameraCommandResult.OkWithMessage -> result.text
                 is CameraController.CameraCommandResult.Unsupported -> result.message
                 is CameraController.CameraCommandResult.Failed -> result.message
             }
+            val tag = result::class.simpleName ?: "?"
+            com.cameramanager.app.util.LogCollector.log("Module", "[$actionName] -> $tag${if (msg != null) " | $msg" else " | OK"}")
             if (msg != null) Toast.makeText(this@PreviewActivity, msg, Toast.LENGTH_SHORT).show()
         }
     }
