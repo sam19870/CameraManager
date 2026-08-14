@@ -57,6 +57,8 @@ class DeviceScanActivity : AppCompatActivity() {
             // 不要进页面立刻启动扫描（防止用户一进来就卡 Progress）
             // 显示个空状态说明+手动点按钮扫
             adapter.submit(emptyList())
+            // 进页面自动开始扫描
+            startScan()
         }.onFailure { t ->
             Log.e(TAG, "onCreate failed: ${t.message}", t)
             toast("扫描页初始化失败: ${t.message}")
@@ -67,7 +69,9 @@ class DeviceScanActivity : AppCompatActivity() {
     private fun startScan() {
         binding.progress.visibility = View.VISIBLE
         binding.btnRescan.isEnabled = false
+        binding.emptyHint.visibility = View.GONE
         adapter.submit(emptyList())
+        binding.recycler.visibility = View.GONE
         runCatching { acquireMulticast() }
 
         lifecycleScope.launch {
@@ -80,9 +84,14 @@ class DeviceScanActivity : AppCompatActivity() {
             }.getOrDefault(emptyList())
             binding.progress.visibility = View.GONE
             binding.btnRescan.isEnabled = true
-            adapter.submit(devices)
             if (devices.isEmpty()) {
-                toast("未发现设备，请确认手机与摄像头在同一 Wi-Fi")
+                binding.emptyHint.text = "未发现设备，请确认手机与摄像头在同一Wi-Fi\n点击「重新扫描」重试"
+                binding.emptyHint.visibility = View.VISIBLE
+                binding.recycler.visibility = View.GONE
+            } else {
+                binding.emptyHint.visibility = View.GONE
+                binding.recycler.visibility = View.VISIBLE
+                adapter.submit(devices)
             }
             runCatching { releaseMulticast() }
         }

@@ -116,23 +116,25 @@ class RtspPlayer(private val context: Context) {
     private suspend fun ensureLibVLC(): LibVLC = withContext(Dispatchers.IO) {
         libVLC ?: run {
             val args = ArrayList<String>().apply {
-                add("-vvv")
+                // 参考 OpenIPC viewer / go2rtc / VLC官方RTSP推荐参数
+                add("--verbose=2")
                 add("--no-drop-late-frames")
                 add("--no-skip-frames")
-                add("--rtsp-tcp")
-                add("--rtsp-frame-buffer-size=100000")
-                add("--avcodec-hw=auto")
-                add("--avcodec-skiploopfilter=nonref")
+                add("--rtsp-tcp")                    // 强制TCP，避免UDP丢包
+                add("--rtsp-frame-buffer-size=200000")
                 add("--network-caching=300")
                 add("--file-caching=300")
                 add("--live-caching=300")
-                add("--sout-mux-caching=300")
+                add("--avcodec-hw=auto")            // 硬解加速
+                add("--avcodec-skip-idct=0")        // 不跳过任何帧
+                add("--avcodec-skip-frame=0")
+                add("--avcodec-threads=2")
                 add("--aout=android_audiotrack")
-                add("--http-continuous")
-                add("--clock-jitter=500")
-                add("--clock-synchro=0")
-                add("--codec=avcodec,none")
+                add("--clock-jitter=800")
+                add("--clock-synchro=1")
                 add("--run-time=99999")
+                // 关键：只启用 avcodec 解码器，不加 "none"（之前 --codec=avcodec,none 是错误语法）
+                add("--codec=avcodec")
             }
             LibVLC(context.applicationContext, args).also { libVLC = it }
         }
@@ -212,20 +214,19 @@ class RtspPlayer(private val context: Context) {
                 val (cache, networkStr) = when (currentProfile) {
                     PROFILE_HD -> 800 to "1200"
                     PROFILE_SD -> 400 to "600"
-                    else -> 250 to "400"
+                    else -> 300 to "500"
                 }
                 media.addOption(":network-caching=$cache")
                 media.addOption(":file-caching=$cache")
                 media.addOption(":live-caching=$cache")
                 media.addOption(":rtsp-tcp")
-                media.addOption(":rtsp-frame-buffer-size=100000")
-                media.addOption(":rtsp-mcast-iface=")
+                media.addOption(":rtsp-frame-buffer-size=200000")
                 media.addOption(":avcodec-hw=auto")
-                media.addOption(":avcodec-skiploopfilter=nonref")
-                media.addOption(":clock-jitter=500")
-                media.addOption(":clock-synchro=0")
+                media.addOption(":avcodec-threads=2")
+                media.addOption(":clock-jitter=800")
+                media.addOption(":clock-synchro=1")
                 media.addOption(":network-timeout=$networkStr")
-                media.addOption(":http-reconnect")
+                media.addOption(":rtsp-timeout=$networkStr")
                 // URL 内 userinfo 编码：确保 rtsp://user:pass@host 同时显式给 VLC rtsp-user/pwd，
                 // 解决海康/大华/TP-LINK 部分设备 401 后 VLC 不再重试的问题
                 runCatching {
@@ -436,6 +437,7 @@ class RtspPlayer(private val context: Context) {
                 add("--network-caching=800"); add("--live-caching=800")
                 add("--avcodec-hw=auto"); add("--sout-mux-caching=500")
                 add("--aout=android_audiotrack")
+                add("--codec=avcodec")
             }
             var vlc: LibVLC? = null
             var player: MediaPlayer? = null

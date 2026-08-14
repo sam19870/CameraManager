@@ -29,6 +29,7 @@ import com.cameramanager.app.service.CameraStreamService
 import com.cameramanager.app.service.FloatingWindowService
 import com.cameramanager.app.ui.DeviceViewModelFactory
 import com.cameramanager.app.ui.PreviewViewModel
+import com.cameramanager.app.ui.playback.PlaybackActivity
 import com.cameramanager.app.ui.settings.SettingsActivity
 import com.cameramanager.app.util.PermissionHelper
 import com.cameramanager.app.util.PtzDirection
@@ -214,12 +215,7 @@ class PreviewActivity : AppCompatActivity() {
         binding.ptzZoomIn.visibility = if (c.zoom) View.VISIBLE else View.GONE
         // 对讲：设备要有语音能力
         binding.btnAudio.visibility = if (c.voiceIntercom) View.VISIBLE else View.GONE
-        // 预设位 / 巡航：有预设位能力才显示
-        binding.btnPreset.visibility = if (c.presets) View.VISIBLE else View.GONE
-        binding.btnCruise.visibility = if (c.cruise) View.VISIBLE else View.GONE
-        // ★ 底部常用条上的新快捷功能：镜头遮蔽 / 补光灯按 caps 动态隐藏
-        binding.btnPrivacy.visibility = if (c.privacyMask) View.VISIBLE else View.GONE
-        binding.btnWhiteLight.visibility = if (c.whiteLight) View.VISIBLE else View.GONE
+        // 预设位 / 巡航：在"更多"对话框中按能力动态显示
     }
 
     private fun startPlayback(dev: Device) {
@@ -270,10 +266,10 @@ class PreviewActivity : AppCompatActivity() {
     private fun refreshTimeoutBadge() {
         val count = player.getTimeoutCount()
         if (count > 0) {
-            binding.timeoutText.visibility = View.VISIBLE
-            binding.timeoutText.text = "超时: $count"
+            binding.statusText.text = "超时: $count"
+            binding.statusText.visibility = View.VISIBLE
         } else {
-            binding.timeoutText.visibility = View.GONE
+            binding.statusText.visibility = View.GONE
         }
     }
 
@@ -287,7 +283,8 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun tap(v: View, action: () -> Unit) {
         v.setOnClickListener {
-            v.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            // 强触感反馈：KEYBOARD_TAP 比 CONTEXT_CLICK 更明显
+            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             action()
         }
     }
@@ -296,10 +293,13 @@ class PreviewActivity : AppCompatActivity() {
         v.setOnTouchListener { _, event ->
             when (event.action) {
                 android.view.MotionEvent.ACTION_DOWN -> {
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    // 强力触感反馈：LONG_PRESS 振动最明显，确保用户知道"按住了"
+                    v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     lifecycleScope.launch { controller?.let { onDown(it) } }
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    // 松手时也给一个短触感，确认松手成功
+                    v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     lifecycleScope.launch { controller?.let { onUp(it) } }
                 }
             }
@@ -308,94 +308,24 @@ class PreviewActivity : AppCompatActivity() {
     }
 
     private fun setupControls() {
+        // Tapo 风格：5个核心按钮 + 回放 + 更多
         tap(binding.btnSnapshot) { captureSnapshot() }
         tap(binding.btnRecord) { toggleRecording() }
         tap(binding.btnAudio) { toggleAudioPanel() }
-        tap(binding.btnProfile) { showProfilePicker() }
-        tap(binding.btnMoreTools) { showMoreToolsPanel() }
-        tap(binding.btnPreset) { showPresetPicker() }
-        tap(binding.btnCruise) { exec { it.toggleCruise() } }
+        tap(binding.btnPtz) { togglePtzPanel() }
+        tap(binding.btnPlayback) { openPlayback() }
+        tap(binding.btnMoreTools) { openDeviceSettings() }
+        // 右上角齿轮 → 设备设置
+        tap(binding.btnMore) { openDeviceSettings() }
 
-        // ========= 常用功能条上的核心快捷操作（不跳页，直接反馈） =========
-        // 1. 画面静音/有声切换
+        // ========= 静音/有声切换 =========
         tap(binding.btnMute) {
             val nowMuted = player.toggleMute()
-            if (nowMuted) {
-                binding.btnMute.text = "静音"
-                binding.btnMute.setIconResource(R.drawable.ic_volume)
-                binding.btnMute.alpha = 0.5f
-                toast("预览画面已静音（仅播放端，不影响录制原声）")
-            } else {
-                binding.btnMute.text = "有声"
-                binding.btnMute.setIconResource(R.drawable.ic_volume)
-                binding.btnMute.alpha = 1.0f
-                toast("已恢复预览画面声音")
+            runOnUiThread {
+                binding.muteLabel.text = if (nowMuted) "静音" else "有声"
+                binding.muteIcon.alpha = if (nowMuted) 0.5f else 1.0f
             }
-        }
-        // 2. 音量减（播放端，不影响摄像头录制）
-        tap(binding.btnVolumeDown) {
-            val pct = player.adjustVolume(-10)
-            toast("画面音量 $pct%")
-        }
-        // 3. 音量加
-        tap(binding.btnVolumeUp) {
-            val pct = player.adjustVolume(+10)
-            toast("画面音量 $pct%")
-        }
-        // 4. 隐私遮蔽（镜头遮罩）—— 点一下就切换，反馈在 toast 和按钮文字
-        tap(binding.btnPrivacy) {
-            val cur = featureStates.getOrDefault("privacyMask", false)
-            val next = !cur
-            exec { ctl ->
-                val r = ctl.setPrivacyMask(next)
-                if (r !is CameraController.CameraCommandResult.Unsupported &&
-                    r !is CameraController.CameraCommandResult.Failed) {
-                    featureStates["privacyMask"] = next
-                    lifecycleScope.launch { viewModel.updatePrivacy(next) }
-                    runOnUiThread {
-                        binding.btnPrivacy.text = if (next) "遮蔽●" else "遮蔽"
-                        binding.btnPrivacy.alpha = if (next) 1.0f else 0.7f
-                        toast(if (next) "已开启镜头遮蔽（黑画面/摄像头端）" else "已解除镜头遮蔽")
-                    }
-                } else {
-                    runOnUiThread {
-                        val msg = when (r) {
-                            is CameraController.CameraCommandResult.Unsupported -> "设备不支持镜头遮蔽"
-                            is CameraController.CameraCommandResult.Failed -> r.reason
-                            else -> "操作失败"
-                        }
-                        toast(msg)
-                    }
-                }
-                r
-            }
-        }
-        // 5. 白光灯补光灯开关
-        tap(binding.btnWhiteLight) {
-            val cur = featureStates.getOrDefault("whiteLight", false)
-            val next = !cur
-            exec { ctl ->
-                val r = ctl.setWhiteLight(next)
-                if (r !is CameraController.CameraCommandResult.Unsupported &&
-                    r !is CameraController.CameraCommandResult.Failed) {
-                    featureStates["whiteLight"] = next
-                    runOnUiThread {
-                        binding.btnWhiteLight.text = if (next) "补光●" else "补光"
-                        binding.btnWhiteLight.alpha = if (next) 1.0f else 0.7f
-                        toast(if (next) "白光灯已开" else "白光灯已关")
-                    }
-                } else {
-                    runOnUiThread {
-                        val msg = when (r) {
-                            is CameraController.CameraCommandResult.Unsupported -> "设备不支持白光灯"
-                            is CameraController.CameraCommandResult.Failed -> r.reason
-                            else -> "操作失败"
-                        }
-                        toast(msg)
-                    }
-                }
-                r
-            }
+            toast(if (nowMuted) "已静音" else "已恢复声音")
         }
 
         // 对讲面板交互（TP-LINK 风格，不跳新页）
@@ -404,7 +334,7 @@ class PreviewActivity : AppCompatActivity() {
             when (checkedId) {
                 R.id.radioHoldTalk -> {
                     voiceMode = VOICE_MODE_HOLD
-                    binding.audioModeHint.text = "按住说话模式"
+                    binding.radioHoldTalk.text = "按住说话模式"
                     binding.btnHoldToTalk.visibility = View.VISIBLE
                     binding.fullDuplexBar.visibility = View.GONE
                     // 切模式先挂断
@@ -412,7 +342,7 @@ class PreviewActivity : AppCompatActivity() {
                 }
                 R.id.radioFullDuplex -> {
                     voiceMode = VOICE_MODE_CALL
-                    binding.audioModeHint.text = "电话对讲模式"
+                    binding.radioFullDuplex.text = "电话对讲模式"
                     binding.btnHoldToTalk.visibility = View.GONE
                     binding.fullDuplexBar.visibility = View.VISIBLE
                     stopVoice()
@@ -458,6 +388,26 @@ class PreviewActivity : AppCompatActivity() {
         pressHold(binding.ptzZoomOut,
             { it.move(0f, 0f, PtzDirection.ZOOM_OUT.zoom) }, { it.stop() })
     }
+
+    private fun togglePtzPanel() {
+        val wasVisible = binding.ptzPanel.visibility == View.VISIBLE
+        if (wasVisible) {
+            binding.ptzPanel.visibility = View.GONE
+        } else {
+            binding.audioPanel.visibility = View.GONE
+            binding.ptzPanel.visibility = View.VISIBLE
+            toast("云台控制已展开")
+        }
+    }
+
+    private fun openPlayback() {
+        runCatching {
+            val d = device ?: return
+            startActivity(PlaybackActivity.intent(this, d.id))
+        }.onFailure { t -> toast("打开回放失败: ${t.message}") }
+    }
+
+    private fun openDeviceSettings() { showMoreToolsPanel() }
 
     private fun showProfilePicker() {
         val d = device ?: return
@@ -727,7 +677,8 @@ class PreviewActivity : AppCompatActivity() {
     private fun toggleRecording() {
         if (recording) {
             recording = false
-            binding.btnRecord.text = "录像"
+            binding.recordLabel.text = "录像"
+            binding.recordIcon.setImageResource(R.drawable.ic_record)
             binding.recordIndicator.visibility = View.GONE
             CameraStreamService.stop(this)
             addRecordingEntry()
@@ -735,7 +686,8 @@ class PreviewActivity : AppCompatActivity() {
         } else {
             recording = true
             recordingStart = System.currentTimeMillis()
-            binding.btnRecord.text = "停止"
+            binding.recordLabel.text = "停止"
+            binding.recordIcon.setImageResource(R.drawable.ic_record)
             binding.recordIndicator.visibility = View.VISIBLE
             CameraStreamService.start(this, recording = true)
             Toast.makeText(this, "开始本地录像", Toast.LENGTH_SHORT).show()

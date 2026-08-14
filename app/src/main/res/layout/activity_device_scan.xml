@@ -11,18 +11,40 @@
 
     <ProgressBar android:id="@+id/progress"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent" android:layout_height="6dp"
+        android:layout_width="match_parent" android:layout_height="5dp"
         android:max="100" android:progress="0"
         android:indeterminate="false" android:visibility="gone"/>
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:padding="12dp" android:gravity="center_vertical">
-        <Button android:id="@+id/btnRescan" style="@style/ActionButton" android:text="@string/rescan"/>
-        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
-        <Button android:id="@+id/btnAddManual" style="@style/ActionButton" android:text="@string/manual_add"/>
+        android:orientation="horizontal" android:padding="10dp" android:gravity="center_vertical">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRescan"
+            style="@style/ActionButton"
+            android:text="重新扫描"
+            app:icon="@drawable/ic_scan"
+            app:iconSize="20dp"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginEnd="6dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddManual"
+            style="@style/ActionButton"
+            android:text="手动添加"
+            app:icon="@drawable/ic_add"
+            app:iconSize="20dp"
+            android:layout_width="0dp" android:layout_weight="1"
+            android:layout_marginStart="6dp"/>
     </LinearLayout>
+
+    <TextView android:id="@+id/emptyHint"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="40dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:text="点击「重新扫描」发现局域网摄像头\n请确保手机和摄像头在同一Wi-Fi"/>
 
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler"
         android:layout_width="match_parent" android:layout_height="match_parent"
-        android:padding="6dp"/>
+        android:padding="6dp"
+        android:visibility="gone"/>
 </LinearLayout>

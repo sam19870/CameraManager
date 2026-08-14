@@ -78,7 +78,20 @@
         <item name="android:gravity">center</item>
     </style>
 
-    <!-- 预览底部快捷功能按钮（扁平化，图标+文字） -->
+    <!-- Tapo 风格底部工具栏按钮（5个均匀分布，图标+文字纵向） -->
+    <style name="ToolBtn">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 旧版兼容别名 -->
     <style name="IconActionBtn" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
